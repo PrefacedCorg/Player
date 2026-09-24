@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 媒体类型定义（MediaItem/MediaKind）位于 Playback，媒体库在此之上做归类与索引 -->
+    <ProjectReference Include="..\Player.Playback\Player.Playback.csproj" />
+  </ItemGroup>
+
+</Project>

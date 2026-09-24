@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Player.Playback\Player.Playback.csproj" />
+    <ProjectReference Include="..\Player.Library\Player.Library.csproj" />
+    <ProjectReference Include="..\Player.Platform\Player.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- libmpv 原生库不随 NuGet 包分发，需自行下载：scripts/fetch-libmpv.ps1 -->
+    <None Include="..\..\third_party\mpv\win-x64\libmpv-2.dll"
+          Link="libmpv-2.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Condition="Exists('..\..\third_party\mpv\win-x64\libmpv-2.dll')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="HanumanInstitute.LibMpv" Version="0.10.1" />
+    <PackageReference Include="HanumanInstitute.LibMpv.Avalonia" Version="0.10.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+</Project>

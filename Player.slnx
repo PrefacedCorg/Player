@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Player.App/Player.App.csproj" />
+    <Project Path="src/Player.Library/Player.Library.csproj" />
+    <Project Path="src/Player.Platform/Player.Platform.csproj" />
+    <Project Path="src/Player.Playback/Player.Playback.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Player.Tests/Player.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,12 @@
+# 本机通用忽略
+bin/
+obj/
+.vs/
+*.user
+
+# libmpv 原生库体积大（约 120MB），不入库，用 scripts/fetch-libmpv.ps1 获取
+/third_party/
+
+# 冒烟测试用的生成素材
+/test-media/
+/publish

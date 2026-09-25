@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:views="clr-namespace:Player.App.Views"
+             x:Class="Player.App.Views.PlayerControls.PositionControl"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- 自绘进度条：填充/拇指边界吸附整像素，杜绝灰色剩余段的亚像素抖动。
+       拖动开始/结束在代码后置里转给 ViewModel（拖动期间忽略引擎回写，松手才 seek）。 -->
+  <views:PositionBar x:Name="Bar"
+                     Minimum="0"
+                     Maximum="{Binding DurationSeconds}"
+                     Value="{Binding PositionSeconds, Mode=TwoWay}"
+                     VerticalAlignment="Center" />
+</UserControl>

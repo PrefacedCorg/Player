@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.SettingsPages.LibrarySettingsPage"
+             x:DataType="vm:LibrarySettingsViewModel">
+
+  <StackPanel Spacing="12">
+    <StackPanel Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="#F0F0F0" />
+      <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0" />
+    </StackPanel>
+
+    <ui:FASettingsExpander Header="媒体库根目录"
+                           Description="扫描从这里开始，可随时更换">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBox Text="{Binding LibraryRoot, Mode=TwoWay}"
+                   PlaceholderText="尚未选择目录"
+                   MinWidth="360" MinHeight="44" VerticalContentAlignment="Center" />
+          <Button Content="浏览…" Click="OnBrowseLibraryRootClick" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="启动时扫描媒体库"
+                           Description="启动后台扫描根目录，完成后进入媒体库视图">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding ScanOnStartup, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="监视目录变化"
+                           Description="目录内新增/删除文件时自动刷新列表">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding WatchFolderChanges, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="识别范围"
+                           Description="{Binding ExtensionCountText}">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding ExtensionSummary}"
+                   MaxWidth="420" TextWrapping="Wrap" TextAlignment="Right" FontSize="13" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

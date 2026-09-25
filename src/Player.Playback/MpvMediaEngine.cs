@@ -30,6 +30,16 @@ public sealed class MpvMediaEngine : IMediaEngine
     private string? _videoDecoderSummary;
     private bool _disposed;
 
+    /// <summary>当前缩放方式（"原始大小"模式才允许平移）。</summary>
+    private VideoScalingMode _scalingMode = VideoScalingMode.Fit;
+
+    /// <summary>当前画面平移量（mpv video-pan-x/y 的原始值，单位为显示画面尺寸的比例）。</summary>
+    private double _panX;
+    private double _panY;
+
+    /// <summary>自由缩放模式下的倍率（1.0 = 铺满视频区）。</summary>
+    private double _scale = 1d;
+
     public MpvMediaEngine(MpvContext mpv)
     {
         _mpv = mpv ?? throw new ArgumentNullException(nameof(mpv));
@@ -71,12 +81,132 @@ public sealed class MpvMediaEngine : IMediaEngine
     /// <summary>mpv 实际生效的音量上限，用于启动自检（确认 volume-max 放宽成功）。</summary>
     public double VolumeMax => Safe(() => _mpv.VolumeMax.Get(), (double?)null) ?? 0d;
 
+    /// <summary>
+    /// 画面缩放方式。改为立即下发：keepaspect / video-unscaled / panscan 都是 mpv 的运行期属性，
+    /// 播放中切换无需重新加载文件。
+    /// </summary>
+    public VideoScalingMode ScalingMode
+    {
+        get => _scalingMode;
+        set
+        {
+            if (_scalingMode == value)
+            {
+                return;
+            }
+
+            _scalingMode = value;
+            ApplyScalingMode(value);
+        }
+    }
+
+    /// <summary>
+    /// 触屏拖动平移画面。像素位移按显示尺寸归一化后累加，并按可平移上限夹取（见 <see cref="VideoPanMath"/>）。
+    /// 仅"原始大小"与"自由缩放"两种模式生效——其余模式下画面随窗口缩放，没有可平移的余量。
+    /// </summary>
+    public void PanVideo(double deltaX, double deltaY)
+    {
+        if (_disposed || _scalingMode is not (VideoScalingMode.Original or VideoScalingMode.Free))
+        {
+            return;
+        }
+
+        var geometry = ReadDisplayGeometry();
+        if (geometry is null)
+        {
+            return;
+        }
+
+        var (displayedWidth, displayedHeight, windowWidth, windowHeight) = geometry.Value;
+        _panX = VideoPanMath.ClampPan(
+            _panX, VideoPanMath.ToPanDelta(deltaX, displayedWidth), displayedWidth, windowWidth);
+        _panY = VideoPanMath.ClampPan(
+            _panY, VideoPanMath.ToPanDelta(deltaY, displayedHeight), displayedHeight, windowHeight);
+        ApplyPan();
+    }
+
+    /// <summary>
+    /// 捏合/滚轮缩放。倍率夹取到允许范围（1× 为铺满视频区），缩放后把既有平移量拉回新范围——
+    /// 放大后两边余量变大可以继续拖，缩小时原来拖出去的部分必须回到可见区内。
+    /// </summary>
+    public void ZoomVideo(double factor)
+    {
+        if (_disposed || _scalingMode != VideoScalingMode.Free || !double.IsFinite(factor) || factor <= 0d)
+        {
+            return;
+        }
+
+        var next = VideoZoomMath.ClampScale(_scale * factor);
+        if (Math.Abs(next - _scale) < 0.0001d)
+        {
+            return;
+        }
+
+        _scale = next;
+        ApplyZoom();
+        ClampPanToView();
+    }
+
+    /// <summary>自由缩放模式下的当前倍率（1.0 = 铺满视频区）。</summary>
+    public double Scale => _scale;
+
+    public void ResetVideoPan()
+    {
+        _panX = 0d;
+        _panY = 0d;
+        ApplyPan();
+    }
+
+    /// <summary>
+    /// 缩放相关属性的回读快照，用于启动自检与日志取证：确认属性真的生效，而不是只发出了调用。
+    /// 其中 dwidth/dheight 是显示中的画面尺寸，osd-dimensions 是视频区尺寸——两者决定可平移范围。
+    /// </summary>
+    public string ScalingSnapshot()
+    {
+        var geometry = ReadDisplayGeometry();
+
+        var sb = new StringBuilder();
+        // keepaspect / video-unscaled 是"是/否"型属性：按字符串读回才是 mpv 侧的真实生效值
+        sb.Append("keepaspect=").Append(Describe(Safe(() => _mpv.GetPropertyString("keepaspect"), string.Empty)));
+        sb.Append(" · unscaled=").Append(Describe(Safe(() => _mpv.GetPropertyString("video-unscaled"), string.Empty)));
+        sb.Append(" · panscan=").Append(ReadDouble("panscan").ToString("F2"));
+        // video-zoom 用 log2 记倍率：这里打印 mpv 回读值，并换算成倍率方便直接核对
+        var zoom = ReadDouble("video-zoom");
+        sb.Append(" · zoom=").Append(zoom.ToString("F2"))
+            .Append("（").Append(VideoZoomMath.FromVideoZoom(zoom).ToString("F2")).Append("×）");
+        sb.Append(" · 画面=").Append(geometry is null
+            ? "-"
+            : $"{geometry.Value.DisplayedWidth:F0}x{geometry.Value.DisplayedHeight:F0}");
+        sb.Append(" · 视频区=").Append(geometry is null
+            ? "-"
+            : $"{geometry.Value.WindowWidth:F0}x{geometry.Value.WindowHeight:F0}");
+        // pan 从 mpv 回读（而不是打印本地字段）：证明下发值被 mpv 接受
+        sb.Append(" · pan=").Append(ReadDouble("video-pan-x").ToString("F3"))
+            .Append(',').Append(ReadDouble("video-pan-y").ToString("F3"));
+        return sb.ToString();
+    }
+
+    /// <summary>平移量日志片段：无位移时为空串。用于确认触屏拖动真的把位移下发生效了。</summary>
+    public string PanSummary()
+    {
+        var panX = ReadDouble("video-pan-x");
+        var panY = ReadDouble("video-pan-y");
+
+        return Math.Abs(panX) < 0.0005d && Math.Abs(panY) < 0.0005d
+            ? string.Empty
+            : $" · pan={panX:F3},{panY:F3}（{_scalingMode}）";
+    }
+
+    private static string Describe(string? value) => string.IsNullOrEmpty(value) ? "-" : value;
+
     public void Load(MediaItem item, bool autoPlay = true)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         CurrentItem = item;
         _videoDecoderReady = false;
         _videoDecoderSummary = null;
+        // 换片后显示尺寸变了，旧的平移量对新画面没有意义
+        ResetVideoPan();
         Safe(() => _mpv.LoadFile(item.Path).Invoke());
         if (autoPlay)
         {
@@ -168,6 +298,101 @@ public sealed class MpvMediaEngine : IMediaEngine
     private void OnVideoReconfig(object? sender, EventArgs e) => DecoderReady?.Invoke(this, MediaKind.Video);
 
     private void SetPaused(bool paused) => Safe(() => _mpv.Pause.Set(paused));
+
+    /// <summary>把缩放方式翻译成 mpv 属性组合。四种方式互斥，且都只动这三个运行期属性。</summary>
+    private void ApplyScalingMode(VideoScalingMode mode)
+    {
+        // 换方式后旧平移量没有意义（例如从点对点切回等比填充）
+        ResetVideoPan();
+
+        switch (mode)
+        {
+            case VideoScalingMode.Fit:
+                SetGeometry(keepAspect: true, unscaled: false, panscan: 0d, scale: 1d);
+                break;
+            case VideoScalingMode.Stretch:
+                SetGeometry(keepAspect: false, unscaled: false, panscan: 0d, scale: 1d);
+                break;
+            case VideoScalingMode.Original:
+                SetGeometry(keepAspect: true, unscaled: true, panscan: 0d, scale: 1d);
+                break;
+            case VideoScalingMode.Crop:
+                SetGeometry(keepAspect: true, unscaled: false, panscan: 1d, scale: 1d);
+                break;
+            case VideoScalingMode.Free:
+                // 进入自由缩放一律从 1×（铺满视频区）起算，避免带着上一次的倍率
+                _scale = 1d;
+                SetGeometry(keepAspect: true, unscaled: false, panscan: 0d, scale: _scale);
+                break;
+        }
+    }
+
+    private void SetGeometry(bool keepAspect, bool unscaled, double panscan, double scale)
+    {
+        Safe(() => _mpv.SetPropertyFlag("keepaspect", keepAspect));
+        Safe(() => _mpv.SetPropertyString("video-unscaled", unscaled ? "yes" : "no"));
+        Safe(() => _mpv.SetPropertyDouble("panscan", panscan));
+        // video-zoom 是全局属性：非自由缩放模式必须显式归零，否则倍率会被带到别的模式里
+        Safe(() => _mpv.SetPropertyDouble("video-zoom", VideoZoomMath.ToVideoZoom(scale)));
+    }
+
+    private void ApplyZoom() =>
+        Safe(() => _mpv.SetPropertyDouble("video-zoom", VideoZoomMath.ToVideoZoom(_scale)));
+
+    /// <summary>把平移量夹到当前显示尺寸允许的范围内（缩放后调用）。</summary>
+    private void ClampPanToView()
+    {
+        var geometry = ReadDisplayGeometry();
+        if (geometry is null)
+        {
+            return;
+        }
+
+        var (displayedWidth, displayedHeight, windowWidth, windowHeight) = geometry.Value;
+        _panX = Math.Clamp(_panX, -VideoPanMath.MaxPan(displayedWidth, windowWidth), VideoPanMath.MaxPan(displayedWidth, windowWidth));
+        _panY = Math.Clamp(_panY, -VideoPanMath.MaxPan(displayedHeight, windowHeight), VideoPanMath.MaxPan(displayedHeight, windowHeight));
+        ApplyPan();
+    }
+
+    private void ApplyPan()
+    {
+        Safe(() => _mpv.SetPropertyDouble("video-pan-x", _panX));
+        Safe(() => _mpv.SetPropertyDouble("video-pan-y", _panY));
+    }
+
+    /// <summary>
+    /// 读显示几何：返回"当前实际显示的画面尺寸"与视频区尺寸。
+    /// <para>
+    /// 注意 dwidth/dheight 是"未经窗口适配与缩放"的画面尺寸（实测：4K 素材在 1280x717 视频区、
+    /// panscan=1 时仍报 3840x2160），因此：
+    /// 点对点模式显示尺寸就是它本身（1:1）；自由缩放模式要按视频区求适配比例再乘倍率。
+    /// </para>
+    /// 任一读不到（未起播、纯音频）返回 null。
+    /// </summary>
+    private (double DisplayedWidth, double DisplayedHeight, double WindowWidth, double WindowHeight)? ReadDisplayGeometry()
+    {
+        var sourceWidth = ReadInt("dwidth");
+        var sourceHeight = ReadInt("dheight");
+        var windowWidth = ReadInt("osd-dimensions/w");
+        var windowHeight = ReadInt("osd-dimensions/h");
+
+        if (sourceWidth <= 0 || sourceHeight <= 0 || windowWidth <= 0 || windowHeight <= 0)
+        {
+            return null;
+        }
+
+        if (_scalingMode != VideoScalingMode.Free)
+        {
+            return (sourceWidth, sourceHeight, windowWidth, windowHeight);
+        }
+
+        var (width, height) = VideoZoomMath.ScaledSize(sourceWidth, sourceHeight, windowWidth, windowHeight, _scale);
+        return (width, height, windowWidth, windowHeight);
+    }
+
+    private int ReadInt(string name) => Safe(() => _mpv.GetProperty<int?>(name), (int?)null) ?? 0;
+
+    private double ReadDouble(string name) => Safe(() => _mpv.GetProperty<double?>(name), (double?)null) ?? 0d;
 
     private void Poll()
     {

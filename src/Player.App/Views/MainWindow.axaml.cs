@@ -1,14 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using HanumanInstitute.LibMpv.Avalonia;
 using Player.App.ViewModels;
 using Player.Platform;
-using Player.Playback;
 
 namespace Player.App.Views;
 
@@ -16,17 +13,24 @@ public partial class MainWindow : Window
 {
     private readonly MainWindowViewModel _viewModel;
 
+    /// <summary>应用级实时设置：主窗口与设置窗口共用同一个实例（见 PlayerSettings）。</summary>
+    private readonly PlayerSettings _settings;
+
     /// <summary>渲染器切换允许生效的时机：窗口显示之后。原生渲染视图（NativeView）未上树就创建会阻塞启动。</summary>
     private bool _rendererSwitchReady;
 
     private readonly DispatcherTimer _overlaySyncTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private VideoTouchOverlay? _touchOverlay;
+    private SettingsWindow? _settingsWindow;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        _viewModel = new MainWindowViewModel(Program.StartupFiles)
+        // 应用级实时设置（App 上创建，主窗口与设置窗口共用同一份，改动即时生效）
+        _settings = App.Settings;
+
+        _viewModel = new MainWindowViewModel(_settings, Program.StartupFiles)
         {
             Renderer = Program.StartupRenderer ?? VideoRenderer.Native,
         };
@@ -40,20 +44,56 @@ public partial class MainWindow : Window
 
         _overlaySyncTimer.Tick += (_, _) => SyncOverlayBounds();
 
-        // 进度条的拖动判定必须挂在隧道阶段并允许已处理事件：
-        // Slider 内部的拇指会接管 PointerPressed/PointerReleased 并标记为已处理，
-        // 用 XAML 的冒泡事件（handledEventsToo=false）会完全收不到，导致拖动判定失效、位置被引擎回写弹回。
-        PositionSlider.AddHandler(
-            PointerPressedEvent, OnPositionSliderPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
-        PositionSlider.AddHandler(
-            PointerReleasedEvent, OnPositionSliderPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        // 控制栏已组件化：渲染器控件只改 ViewModel.Renderer，真正切换渲染视图（重建 mpv 上下文、
+        // 同步触摸层）在这里统一处理。事件参数类型全名限定是因为 LibMpv 也有同名类型。
+        _viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainWindowViewModel.Renderer))
+            {
+                ApplyRenderer(_viewModel.Renderer);
+            }
+        };
 
         Opened += (_, _) =>
         {
             _rendererSwitchReady = true;
             EnsureTouchOverlay();
+
+            // --settings：启动后直接进设置页（调试验证 / 大屏快捷入口）。放到 Dispatcher 队列里，
+            // 避免在 Opened 回调内直接 ShowDialog 触发未完成显示就弹模态窗口的问题。
+            if (Program.OpenSettingsOnStartup)
+            {
+                Dispatcher.UIThread.Post(() => _ = OpenSettingsAsync());
+            }
         };
         Closed += (_, _) => DestroyTouchOverlay();
+    }
+
+    /// <summary>
+    /// 打开设置窗口（模态）。设置窗口是独立顶层窗口，
+    /// 期间先撤掉视频区透明触摸层——它同样是顶层窗口，会抢走设置界面的点击命中。
+    /// </summary>
+    public async Task OpenSettingsAsync()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        DestroyTouchOverlay();
+        var window = new SettingsWindow(_settings);
+        _settingsWindow = window;
+
+        try
+        {
+            await window.ShowDialog(this);
+        }
+        finally
+        {
+            _settingsWindow = null;
+            EnsureTouchOverlay();
+        }
     }
 
     private void ApplyRenderer(VideoRenderer renderer)
@@ -82,6 +122,9 @@ public partial class MainWindow : Window
         {
             _touchOverlay = new VideoTouchOverlay();
             _touchOverlay.VideoTapped += OnVideoTapped;
+            _touchOverlay.VideoDragged += OnVideoDragged;
+            _touchOverlay.VideoDragCompleted += OnVideoDragCompleted;
+            _touchOverlay.VideoZoomRequested += OnVideoZoomRequested;
             _touchOverlay.Show(this);
             _overlaySyncTimer.Start();
             StartupTrace.Mark("视频区透明触摸层已启用（Native 渲染器）");
@@ -99,6 +142,9 @@ public partial class MainWindow : Window
 
         _overlaySyncTimer.Stop();
         _touchOverlay.VideoTapped -= OnVideoTapped;
+        _touchOverlay.VideoDragged -= OnVideoDragged;
+        _touchOverlay.VideoDragCompleted -= OnVideoDragCompleted;
+        _touchOverlay.VideoZoomRequested -= OnVideoZoomRequested;
         _touchOverlay.Close();
         _touchOverlay = null;
         StartupTrace.Mark("视频区透明触摸层已关闭");
@@ -121,50 +167,15 @@ public partial class MainWindow : Window
     private void OnVideoTapped(object? sender, Point position) =>
         _viewModel.OnVideoTapped(position.X, position.Y);
 
-    private async void OnOpenClick(object? sender, RoutedEventArgs e)
-    {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "选择媒体文件（可多选，按顺序连续播放）",
-            AllowMultiple = true,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("媒体文件")
-                {
-                    Patterns = MediaKindResolver.SupportedExtensions.Select(static ext => "*" + ext).ToArray(),
-                },
-            ],
-        });
+    /// <summary>视频区拖动：点对点模式下平移画面（其余模式由引擎侧忽略）。</summary>
+    private void OnVideoDragged(object? sender, Point delta) =>
+        _viewModel.PanVideo(delta.X, delta.Y);
 
-        var paths = files
-            .Select(static f => f.TryGetLocalPath())
-            .Where(static p => !string.IsNullOrEmpty(p))
-            .Select(static p => p!)
-            .ToList();
+    /// <summary>拖动结束：把本次累计位移与 mpv 回读值写进日志，便于调手感与定位问题。</summary>
+    private void OnVideoDragCompleted(object? sender, Point total) =>
+        _viewModel.EndVideoDrag(total.X, total.Y);
 
-        if (paths.Count > 0)
-        {
-            _viewModel.OpenFiles(paths);
-        }
-    }
-
-    /// <summary>
-    /// 进度条按下即视为开始拖动（引擎回传的位置在此期间不覆盖滑块）。
-    /// 注意：绝不能用 PointerCaptureLost 当作松手信号——Slider 内部的拇指一接管指针捕获
-    /// 就会触发它，会导致刚按下就结束拖动，滑块被引擎回写顶回原位置（表现为"拖不动、回弹"）。
-    /// </summary>
-    private void OnPositionSliderPointerPressed(object? sender, PointerPressedEventArgs e) =>
-        _viewModel.BeginScrub();
-
-    private void OnPositionSliderPointerReleased(object? sender, PointerReleasedEventArgs e) =>
-        _viewModel.EndScrub();
-
-    /// <summary>切换渲染器会重建渲染视图与 mpv 上下文，M0 阶段用于在真机上对比 OpenGl / Native / Software。</summary>
-    private void OnRendererChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (sender is ComboBox { SelectedItem: VideoRenderer renderer })
-        {
-            ApplyRenderer(renderer);
-        }
-    }
+    /// <summary>捏合或滚轮缩放（仅自由缩放模式生效）。</summary>
+    private void OnVideoZoomRequested(object? sender, double factor) =>
+        _viewModel.ZoomVideo(factor);
 }

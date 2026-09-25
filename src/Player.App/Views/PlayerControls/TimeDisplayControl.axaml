@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.PlayerControls.TimeDisplayControl"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- MinWidth + 居中：时间文本长度变化时不带动整行跳动（等宽数字字体下宽度本来就稳定） -->
+  <TextBlock Text="{Binding TimeText}"
+             Foreground="#F0F0F0"
+             FontSize="15"
+             MinWidth="120"
+             VerticalAlignment="Center" />
+</UserControl>

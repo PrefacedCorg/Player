@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:vm="clr-namespace:Player.App.ViewModels"
+        xmlns:pages="clr-namespace:Player.App.Views.SettingsPages"
+        x:Class="Player.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Title="设置"
+        Width="1180"
+        Height="760"
+        MinWidth="960"
+        MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Background="#0F0F13">
+
+  <!-- 左侧导航（FANavigationView）+ 右侧内容页。
+       导航项由代码后置按 ViewModel 列表构建成 FANavigationViewItem（见 SettingsWindow.axaml.cs）：
+       走 MenuItemsSource + MenuItemTemplate 会让 FA 用 FAItemTemplateWrapper 包装模板，
+       而它的 Match() 直接抛 NotImplementedException，布局阶段必崩（已实测复现）。
+       内容页按 ViewModel 类型由 DataTemplates 匹配到独立 UserControl（见 Views/SettingsPages/），
+       新增设置页只需加 VM + 新建一个 UserControl + 在这里加一行 DataTemplate。 -->
+  <ui:FANavigationView x:Name="NavView"
+                       PaneDisplayMode="Left"
+                       PaneTitle="设置"
+                       OpenPaneLength="300"
+                       IsPaneToggleButtonVisible="False"
+                       IsBackButtonVisible="False"
+                       IsSettingsVisible="False"
+                       AlwaysShowHeader="False"
+                       SelectionChanged="OnNavSelectionChanged">
+
+    <Grid RowDefinitions="*,Auto">
+
+      <ScrollViewer Grid.Row="0" Padding="36,28,36,20">
+        <ContentControl Content="{Binding SelectedPage}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:PlaybackSettingsViewModel">
+              <pages:PlaybackSettingsPage />
+            </DataTemplate>
+            <DataTemplate DataType="vm:DisplaySettingsViewModel">
+              <pages:DisplaySettingsPage />
+            </DataTemplate>
+            <DataTemplate DataType="vm:ControlBarSettingsViewModel">
+              <pages:ControlBarSettingsPage />
+            </DataTemplate>
+            <DataTemplate DataType="vm:AudioSettingsViewModel">
+              <pages:AudioSettingsPage />
+            </DataTemplate>
+            <DataTemplate DataType="vm:LibrarySettingsViewModel">
+              <pages:LibrarySettingsPage />
+            </DataTemplate>
+            <DataTemplate DataType="vm:AboutSettingsViewModel">
+              <pages:AboutSettingsPage />
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </ScrollViewer>
+
+      <!-- 底部操作条：与主窗口控制条同一套配色 -->
+      <Border Grid.Row="1" Background="#1B1B22" BorderBrush="#26262E" BorderThickness="0,1,0,0" Padding="24,14">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <TextBlock Grid.Column="0"
+                     Text="{Binding StatusHint}"
+                     Foreground="#A8A8B0"
+                     FontSize="13"
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap" />
+          <Button Grid.Column="1" Content="关闭设置" Click="OnCloseClick" />
+        </Grid>
+      </Border>
+    </Grid>
+  </ui:FANavigationView>
+</Window>

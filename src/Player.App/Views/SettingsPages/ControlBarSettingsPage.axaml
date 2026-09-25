@@ -1,0 +1,204 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pages="clr-namespace:Player.App.Views.SettingsPages"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:controls="clr-namespace:Player.App.Controls"
+             xmlns:behaviors="clr-namespace:Player.App.Behaviors"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:ia="using:Avalonia.Xaml.Interactivity"
+             xmlns:dnd="using:Avalonia.Xaml.Interactions.DragAndDrop"
+             x:Class="Player.App.Views.SettingsPages.ControlBarSettingsPage"
+             x:DataType="vm:ControlBarSettingsViewModel">
+    <UserControl.Styles>
+        <Style Selector="ListBox.drag-source ListBoxItem">
+            <Setter Property="(ia:Interaction.Behaviors)">
+                <ia:BehaviorCollectionTemplate>
+                    <ia:BehaviorCollection>
+                        <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3"/>
+                    </ia:BehaviorCollection>
+                </ia:BehaviorCollectionTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.component-listBox">
+            <Style.Resources>
+                <MenuFlyout x:Key="ComponentsOperationMenuFlyout">
+                    <MenuItem Header="向左移动一位"
+                              Command="{Binding $parent[pages:ControlBarSettingsPage].MovePreviousCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <ui:FAFontIcon Glyph="&#xE76B;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="向右移动一位"
+                              Command="{Binding $parent[pages:ControlBarSettingsPage].MoveNextCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <ui:FAFontIcon Glyph="&#xE76C;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="创建副本"
+                              Command="{Binding $parent[pages:ControlBarSettingsPage].DuplicateCommand}"
+                              CommandParameter="{Binding}">
+                        <MenuItem.Icon>
+                            <ui:FAFontIcon Glyph="&#xEEB9;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </MenuFlyout>
+            </Style.Resources>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="ItemTemplate">
+                <DataTemplate DataType="app:PlayerControlItem">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                        <controls:TouchDragThumb Margin="-4 0 -2 0" IsCompact="True"/>
+                        <ui:FAIconSourceElement IconSource="{Binding IconSource}"
+                                                VerticalAlignment="Center" Height="14" Width="14"
+                                                ClipToBounds="False"/>
+                        <TextBlock Text="{Binding Title}"
+                                   VerticalAlignment="Center"/>
+                        <Button VerticalAlignment="Center"
+                                ToolTip.Tip="更多选项…"
+                                Flyout="{StaticResource ComponentsOperationMenuFlyout}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                IsVisible="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}}">
+                            <ui:FAFontIcon Glyph="&#xEBAC;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                        </Button>
+                        <Button Foreground="IndianRed"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="删除"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                IsVisible="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}}"
+                                Click="OnRemoveClick">
+                            <ui:FAFontIcon Glyph="&#xE61D;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                        </Button>
+                    </StackPanel>
+                </DataTemplate>
+            </Setter>
+            <Setter Property="ItemsPanel">
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left"/>
+                </ItemsPanelTemplate>
+            </Setter>
+            <Setter Property="ItemContainerTheme">
+                <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="Padding" Value="8 0"/>
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="VerticalAlignment" Value="Stretch"/>
+                    <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                    <Setter Property="ContextFlyout" Value="{StaticResource ComponentsOperationMenuFlyout}"/>
+                </ControlTheme>
+            </Setter>
+            <Style Selector="^ ListBoxItem">
+                <Setter Property="(ia:Interaction.Behaviors)">
+                    <ia:BehaviorCollectionTemplate>
+                        <ia:BehaviorCollection>
+                            <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3">
+                                <behaviors:AdvancedManagedContextDragBehavior.Context>
+                                    <!-- 载荷 =(条目, 所在列表)。$parent[ListBox] 无法参与编译绑定，此处改用反射绑定 -->
+                                    <MultiBinding Converter="{x:Static app:PlayerControlDragData.Create}" x:CompileBindings="False">
+                                        <Binding/>
+                                        <Binding Path="$parent[ListBox].ItemsSource"/>
+                                    </MultiBinding>
+                                </behaviors:AdvancedManagedContextDragBehavior.Context>
+                            </behaviors:AdvancedManagedContextDragBehavior>
+                        </ia:BehaviorCollection>
+                    </ia:BehaviorCollectionTemplate>
+                </Setter>
+            </Style>
+        </Style>
+    </UserControl.Styles>
+    <Grid Margin="12 0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0 0 0 12">
+            <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="#F0F0F0"/>
+            <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0"/>
+        </StackPanel>
+
+        <!-- ROW 1 说明 -->
+        <TextBlock Grid.Row="1"
+                   Text="以下控件将显示在控制栏上，从组件库拖动控件以添加控件。"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Left"
+                   Margin="0 0 0 8"/>
+
+        <!-- ROW 2 控制栏布局：已放置的控件，拖动调整顺序，右键菜单同样是这些操作 -->
+        <ListBox Grid.Row="2"
+                 ItemsSource="{Binding Placed}"
+                 Classes="component-listBox"
+                 Margin="-12 0">
+            <ia:Interaction.Behaviors>
+                <ia:BehaviorCollection>
+                    <dnd:ManagedContextDropBehavior Handler="{Binding DropHandler}"
+                                                    Context="{Binding Placed}"/>
+                </ia:BehaviorCollection>
+            </ia:Interaction.Behaviors>
+        </ListBox>
+
+        <!-- ROW 3 组件库 -->
+        <TextBlock Grid.Row="3" Text="组件库"
+                   FontWeight="SemiBold"
+                   Margin="0 16 0 4"/>
+
+        <ListBox Grid.Row="4"
+                 ItemsSource="{Binding Library}"
+                 Classes="drag-source"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="app:PlayerControlLibraryEntry">
+                    <Grid HorizontalAlignment="Stretch" RowDefinitions="Auto,*" ColumnDefinitions="Auto,Auto,*,Auto"
+                          Margin="0 8" Height="50">
+                        <controls:TouchDragThumb Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                                 Width="24"/>
+
+                        <ui:FAIconSourceElement Grid.Column="1" Grid.Row="0"
+                                                Grid.RowSpan="2"
+                                                Width="32" Height="32"
+                                                VerticalAlignment="Center"
+                                                ClipToBounds="False"
+                                                Margin="0 -4 4 0"
+                                                IconSource="{Binding IconSource}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2"
+                                   Text="{Binding Title}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   Margin="0 0 0 1"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2"
+                                   Text="{Binding Description}"
+                                   Opacity="0.75"
+                                   FontSize="12"
+                                   FontWeight="Regular"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Stretch"
+                                   TextAlignment="Left"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel>
+                        <ia:Interaction.Behaviors>
+                            <ia:BehaviorCollection>
+                                <behaviors:WrapPanelAutoResizeBehavior TargetWidth="225"/>
+                            </ia:BehaviorCollection>
+                        </ia:Interaction.Behaviors>
+                    </WrapPanel>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+        </ListBox>
+    </Grid>
+</UserControl>

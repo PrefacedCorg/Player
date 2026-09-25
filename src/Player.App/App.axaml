@@ -1,8 +1,11 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sty="using:FluentAvalonia.Styling"
              x:Class="Player.App.App"
              RequestedThemeVariant="Dark">
   <Application.Styles>
-    <FluentTheme />
+    <!-- WinUI/Fluent 主题（FluentAvaloniaUI）：设置页用它的 FANavigationView + FASettingsExpander。
+         它自带完整控件样式集，因此不再叠加 Avalonia.Themes.Fluent。 -->
+    <sty:FluentAvaloniaTheme />
   </Application.Styles>
 </Application>

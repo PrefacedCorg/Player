@@ -1,0 +1,55 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Player.App.Controls">
+  <Design.PreviewWith>
+    <controls:TouchDragThumb />
+  </Design.PreviewWith>
+
+  <!-- 拖动排序用的手柄。样式与 ClassIsland 的 TouchDragThumb 一致（同样的字形与显隐规则），
+       只是把它的 FluentIcon 换成本项目已有的 FluentAvalonia 图标控件、去掉其触摸模式联动。 -->
+  <Style Selector="controls|TouchDragThumb">
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Easing="0,0 0,1" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="Transparent">
+          <Viewbox VerticalAlignment="Center">
+            <!-- 用符号字体的字形（ClassIsland 用它自己的 FluentIcon，这里是等价的 Avalonia 写法） -->
+            <TextBlock x:Name="Glyph"
+                       FontFamily="{DynamicResource SymbolThemeFontFamily}"
+                       Width="18"
+                       VerticalAlignment="Center"
+                       FontSize="18"
+                       Opacity="0.8" />
+          </Viewbox>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+
+    <Style Selector="^[Orientation=Horizontal] /template/ TextBlock#Glyph">
+      <Setter Property="Text" Value="&#xee44;" />
+    </Style>
+    <Style Selector="^[Orientation=Vertical] /template/ TextBlock#Glyph">
+      <Setter Property="Text" Value="&#xee46;" />
+    </Style>
+    <Style Selector="^[Orientation=Horizontal][IsCompact=True] /template/ TextBlock#Glyph">
+      <Setter Property="Text" Value="&#xee49;" />
+    </Style>
+    <Style Selector="^[Orientation=Vertical][IsCompact=True] /template/ TextBlock#Glyph">
+      <Setter Property="Text" Value="&#xee49;" />
+    </Style>
+    <Style Selector="^[IsVisible=True]">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <!-- 本项目没有 ClassIsland 的触摸模式助手：IsExplicitVisible=False 时同样显示，
+         需要"只在触摸时出现"再补联动。 -->
+    <Style Selector="^.in-listbox">
+      <Setter Property="Margin" Value="-8 -8 0 -8" />
+    </Style>
+  </Style>
+</Styles>

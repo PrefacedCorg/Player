@@ -15,6 +15,7 @@ namespace Player.App.ViewModels;
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
+    private readonly PlayerSettings _settings;
     private readonly IReadOnlyList<string> _startupFiles;
     private readonly DispatcherTimer _diagnosticsTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _surfaceReadyTimer = new() { Interval = TimeSpan.FromMilliseconds(30) };
@@ -81,9 +82,13 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isControlBarVisible = true;
 
-    public MainWindowViewModel(IReadOnlyList<string>? startupFiles = null)
+    public MainWindowViewModel(PlayerSettings settings, IReadOnlyList<string>? startupFiles = null)
     {
+        _settings = settings;
         _startupFiles = startupFiles ?? [];
+
+        // 设置窗口与主窗口共用同一个 PlayerSettings 实例，改动在这里即时下发到引擎
+        _settings.PropertyChanged += OnSettingsChanged;
 
         // 诊断走独立定时器，不依赖播放状态变化：暂停或位置不推进时也要能取到硬解信息
         _diagnosticsTimer.Tick += (_, _) => RunDiagnostics();
@@ -93,7 +98,57 @@ public partial class MainWindowViewModel : ObservableObject
         _surfaceReadyTimer.Tick += (_, _) => CheckSurfaceReady();
     }
 
+    /// <summary>设置变化回调。类型全名限定：LibMpv 也有同名类型，直接 using 会歧义。</summary>
+    private void OnSettingsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlayerSettings.ScalingMode))
+        {
+            ApplyScalingMode();
+        }
+    }
+
+    /// <summary>把当前缩放方式下发给引擎，并把 mpv 的回读值写进日志，便于确认属性真的生效。</summary>
+    private void ApplyScalingMode()
+    {
+        if (_engine is null)
+        {
+            return;
+        }
+
+        _engine.ScalingMode = _settings.ScalingMode;
+        StartupTrace.Mark($"画面缩放方式 → {_settings.ScalingMode} · {_engine.ScalingSnapshot()}");
+    }
+
+    /// <summary>
+    /// 视频区被拖动（来自透明触摸层）：点对点模式下平移画面，其余模式忽略。
+    /// 位移单位为像素，换算与限位在引擎侧完成（见 VideoPanMath）。
+    /// </summary>
+    public void PanVideo(double deltaX, double deltaY) => _engine?.PanVideo(deltaX, deltaY);
+
+    /// <summary>
+    /// 缩放画面（捏合或滚轮）：factor 为倍率增量，仅"自由缩放"模式生效。
+    /// 捏合过程中会连续调用，因此不在这里打日志——倍率会出现在拖动结束与心跳的几何快照里。
+    /// </summary>
+    public void ZoomVideo(double factor) => _engine?.ZoomVideo(factor);
+
+    /// <summary>
+    /// 一次拖动结束：记录本次累计位移与 mpv 回读的平移量。
+    /// 两个数字放在一起才能判断"手指位移"与"画面位移"是否一致（手感调校的依据）。
+    /// </summary>
+    public void EndVideoDrag(double totalX, double totalY)
+    {
+        if (_engine is null)
+        {
+            return;
+        }
+
+        StartupTrace.Mark($"画面拖动结束：手指位移 {totalX:F0},{totalY:F0} px · {_engine.ScalingSnapshot()}");
+    }
+
     public VideoRenderer[] RendererOptions { get; } = Enum.GetValues<VideoRenderer>();
+
+    /// <summary>应用级实时设置。控制栏宿主按其中的控件列表渲染，因此这里要暴露给视图。</summary>
+    public PlayerSettings Settings => _settings;
 
     /// <summary>进度条是否正在被拖动。拖动期间忽略引擎回传的位置，松手才真正 seek。</summary>
     public bool IsScrubbing { get; private set; }
@@ -273,6 +328,7 @@ public partial class MainWindowViewModel : ObservableObject
             engine.StateChanged += OnEngineStateChanged;
             engine.DecoderReady += OnDecoderReady;
             engine.Volume = Volume;
+            engine.ScalingMode = _settings.ScalingMode;
             _engine = engine;
 
             _mpvReadyMs = (long)StartupTrace.ElapsedMs;
@@ -374,6 +430,9 @@ public partial class MainWindowViewModel : ObservableObject
             _firstFrameMs ??= _loadWatch?.ElapsedMilliseconds;
             StartupTrace.Mark($"起播完成：{_firstFrameMs} ms（LoadFile→播放开始推进）· "
                 + $"{state.Position.TotalSeconds:F2}s / {state.Duration.TotalSeconds:F2}s");
+
+            // 起播后几何已确定（dwidth/dheight、视频区尺寸可读），落一条缩放自检作为取证
+            StartupTrace.Mark($"画面几何自检（{_engine?.ScalingMode}）：{_engine?.ScalingSnapshot()}");
             UpdateTimingText();
         }
 
@@ -411,7 +470,7 @@ public partial class MainWindowViewModel : ObservableObject
             var state = _engine.State;
             StartupTrace.Mark(
                 $"心跳：pos={state.Position.TotalSeconds:F2}s / {state.Duration.TotalSeconds:F2}s"
-                + $" · cpu={cpuPercent:F1}% · {_engine.DebugSnapshot()}");
+                + $" · cpu={cpuPercent:F1}% · {_engine.DebugSnapshot()}{_engine.PanSummary()}");
         }
 
         var watch = _loadWatch;

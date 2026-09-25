@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Player.App.ViewModels"
+        xmlns:pc="clr-namespace:Player.App.Views.PlayerControls"
         xmlns:mpv="clr-namespace:HanumanInstitute.LibMpv.Avalonia;assembly=HanumanInstitute.LibMpv.Avalonia"
         x:Class="Player.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -10,7 +11,8 @@
         Background="#0F0F13">
 
   <!-- 布局前提：默认 Native 渲染器下视频是原生子窗口，Avalonia 控件无法叠加在视频之上，
-       因此信息与控制一律放在视频区之外的控制条里（触摸控件全部 >= 52px 高）。 -->
+       因此信息与控制一律放在视频区之外的控制条里。
+       控件尺寸不再逐控件覆盖，一律走 FluentAvaloniaTheme 的默认度量。 -->
   <Grid RowDefinitions="*,Auto">
 
     <mpv:MpvView x:Name="VideoView"
@@ -18,44 +20,13 @@
                  Renderer="Native"
                  MpvContext="{Binding Mpv}" />
 
-    <Border Grid.Row="1" Background="#1B1B22" Padding="20,14" IsVisible="{Binding IsControlBarVisible}">
-      <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+    <Border Grid.Row="1" Background="#1B1B22" IsVisible="{Binding IsControlBarVisible}">
+      <Grid RowDefinitions="Auto,Auto,Auto">
 
-        <!-- 控制行 -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="16">
-          <Button Grid.Column="0" Content="打开文件" Click="OnOpenClick" MinHeight="52" MinWidth="120" FontSize="16" />
-          <Button Grid.Column="1" Content="{Binding PlayPauseText}" Command="{Binding TogglePauseCommand}" MinHeight="52" MinWidth="120" FontSize="16" />
-          <Button Grid.Column="2" Content="停止" Command="{Binding StopCommand}" MinHeight="52" MinWidth="96" FontSize="16" />
-
-          <Slider Grid.Column="3"
-                  x:Name="PositionSlider"
-                  Minimum="0"
-                  Maximum="{Binding DurationSeconds}"
-                  Value="{Binding PositionSeconds, Mode=TwoWay}"
-                  VerticalAlignment="Center" />
-
-          <TextBlock Grid.Column="4" Text="{Binding TimeText}" Foreground="#F0F0F0" FontSize="15" VerticalAlignment="Center" MinWidth="120" />
-
-          <Slider Grid.Column="5" Width="150" Minimum="0" Maximum="200" Value="{Binding Volume, Mode=TwoWay}" VerticalAlignment="Center" />
-
-          <TextBlock Grid.Column="6"
-                     Text="{Binding Volume, StringFormat='{}{0:F0}%'}"
-                     Foreground="#F0F0F0"
-                     FontSize="15"
-                     MinWidth="52"
-                     TextAlignment="Right"
-                     VerticalAlignment="Center" />
-
-          <StackPanel Grid.Column="7" Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="渲染器" Foreground="#A8A8B0" FontSize="14" VerticalAlignment="Center" />
-            <ComboBox x:Name="RendererBox"
-                      ItemsSource="{Binding RendererOptions}"
-                      SelectedItem="{Binding Renderer}"
-                      SelectionChanged="OnRendererChanged"
-                      MinHeight="44"
-                      MinWidth="130" />
-          </StackPanel>
-        </Grid>
+        <!-- 控制行：控件全部组件化（Views/PlayerControls 下一个控件一个文件），
+             这里只放宿主，具体放哪些控件、按什么顺序由设置里的有序列表决定，
+             可在 设置 → 控制栏 里勾选显隐与调整顺序，改完立即重建。 -->
+        <pc:PlayerControlBar Grid.Row="0" />
 
         <!-- 状态与起播时序 -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="20">

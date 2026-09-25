@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.PlayerControls.VolumeControl"
+             x:DataType="vm:MainWindowViewModel">
+
+  <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+    <Slider Width="150"
+            Minimum="0"
+            Maximum="200"
+            Value="{Binding Volume, Mode=TwoWay}"
+            VerticalAlignment="Center" />
+
+    <!-- 百分比右对齐 + 固定宽度：数字位数变化时不带动布局抖动 -->
+    <TextBlock Text="{Binding Volume, StringFormat='{}{0:F0}%'}"
+               Foreground="#F0F0F0"
+               FontSize="15"
+               MinWidth="52"
+               TextAlignment="Right"
+               VerticalAlignment="Center" />
+  </StackPanel>
+</UserControl>

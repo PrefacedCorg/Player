@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Win32;
 using HanumanInstitute.LibMpv.Avalonia;
 using Player.Platform;
+using Player.Playback;
 
 namespace Player.App;
 
@@ -17,6 +18,12 @@ internal static class Program
     /// <summary>命令行指定的渲染器（未指定时用 OpenGl，避免 Auto 在 Windows 上落到会抢输入的 NativeView）。</summary>
     public static VideoRenderer? StartupRenderer { get; private set; }
 
+    /// <summary>启动参数 --settings：窗口就绪后直接打开设置页。</summary>
+    public static bool OpenSettingsOnStartup { get; private set; }
+
+    /// <summary>启动参数 --scaling：指定初始画面缩放方式（真机验证与快捷入口）。</summary>
+    public static VideoScalingMode? StartupScaling { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -29,6 +36,8 @@ internal static class Program
 
         StartupFiles = ParseMediaFiles(args);
         StartupRenderer = ParseStartupRenderer(args);
+        StartupScaling = ParseStartupScaling(args);
+        OpenSettingsOnStartup = args.Any(static arg => arg is "--settings" or "-s");
 
         if (StartupFiles.Count > 0)
         {
@@ -38,6 +47,12 @@ internal static class Program
         if (StartupRenderer is not null)
         {
             StartupTrace.Mark($"启动参数指定渲染器：{StartupRenderer}");
+        }
+
+        if (StartupScaling is not null)
+        {
+            StartupTrace.Mark($"启动参数指定画面缩放方式：{StartupScaling}");
+            App.Settings.ScalingMode = StartupScaling.Value;
         }
 
         try
@@ -145,6 +160,21 @@ internal static class Program
                 && Enum.TryParse<VideoRenderer>(args[i + 1], ignoreCase: true, out var renderer))
             {
                 return renderer;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>解析 --scaling <Fit|Stretch|Original|Crop>（大小写不敏感）。</summary>
+    private static VideoScalingMode? ParseStartupScaling(string[] args)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] is "--scaling"
+                && Enum.TryParse<VideoScalingMode>(args[i + 1], ignoreCase: true, out var mode))
+            {
+                return mode;
             }
         }
 

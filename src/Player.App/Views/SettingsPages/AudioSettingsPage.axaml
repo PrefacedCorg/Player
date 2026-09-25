@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.SettingsPages.AudioSettingsPage"
+             x:DataType="vm:AudioSettingsViewModel">
+
+  <StackPanel Spacing="12">
+    <StackPanel Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="#F0F0F0" />
+      <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0" />
+    </StackPanel>
+
+    <ui:FASettingsExpander Header="音量上限"
+                           Description="允许放大到的最大值，超过 100% 为软件增益，可能削波失真">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+          <Slider Minimum="100" Maximum="200" Width="300" Value="{Binding MaxVolume, Mode=TwoWay}" />
+          <TextBlock Text="{Binding MaxVolume, StringFormat='{}{0:F0}%'}"
+                     FontSize="16" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="启动音量"
+                           Description="每次启动时的初始音量">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+          <Slider Minimum="0" Maximum="200" Width="300" Value="{Binding StartupVolume, Mode=TwoWay}" />
+          <TextBlock Text="{Binding StartupVolume, StringFormat='{}{0:F0}%'}"
+                     FontSize="16" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="音频输出"
+                           Description="输出设备与共享模式">
+      <ui:FASettingsExpander.Footer>
+        <ComboBox ItemsSource="{Binding OutputDevices}"
+                  SelectedItem="{Binding OutputDevice, Mode=TwoWay}" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.PlayerControls.OpenFileControl"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- DataContext 由视觉树继承（= 主窗口 ViewModel），无需手动赋值。 -->
+  <Button Content="打开文件" Click="OnClick" />
+</UserControl>

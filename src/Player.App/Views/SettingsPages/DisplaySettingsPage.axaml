@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.SettingsPages.DisplaySettingsPage"
+             x:DataType="vm:DisplaySettingsViewModel">
+
+  <StackPanel Spacing="12">
+    <StackPanel Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="#F0F0F0" />
+      <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0" />
+    </StackPanel>
+
+    <ui:FASettingsExpander Header="默认渲染器"
+                           Description="Native 走零拷贝硬解；OpenGl 便于对比，Software 仅兜底">
+      <ui:FASettingsExpander.Footer>
+        <ComboBox ItemsSource="{Binding RendererOptions}"
+                  SelectedItem="{Binding Renderer, Mode=TwoWay}" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="启动即全屏"
+                           Description="以全屏方式进入，适合大屏常驻播放">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding StartFullScreen, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <!-- 说明直接跟随选中项：换一种方式，这里就写清这种方式的效果 -->
+    <ui:FASettingsExpander Header="画面缩放方式"
+                           Description="{Binding SelectedScaling.Description}">
+      <ui:FASettingsExpander.Footer>
+        <ComboBox ItemsSource="{Binding ScalingOptions}"
+                  SelectedItem="{Binding SelectedScaling, Mode=TwoWay}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate DataType="vm:VideoScalingOption">
+              <TextBlock Text="{Binding Title}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

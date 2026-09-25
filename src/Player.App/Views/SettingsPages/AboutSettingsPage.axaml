@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.SettingsPages.AboutSettingsPage"
+             x:DataType="vm:AboutSettingsViewModel">
+
+  <StackPanel Spacing="12">
+    <StackPanel Spacing="4" Margin="0,0,0,8">
+      <TextBlock Text="{Binding Title}" FontSize="28" FontWeight="SemiBold" Foreground="#F0F0F0" />
+      <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0" />
+    </StackPanel>
+
+    <ui:FASettingsExpander Header="应用版本" Description="大屏触摸播放器">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding AppVersion}" FontSize="16" VerticalAlignment="Center" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header=".NET 运行时">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding FrameworkText}" FontSize="14" VerticalAlignment="Center" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="操作系统">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding OsText}" FontSize="14" VerticalAlignment="Center" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="渲染管线">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding RenderPipeline}"
+                   MaxWidth="440" TextWrapping="Wrap" TextAlignment="Right" FontSize="14" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="播放内核">
+      <ui:FASettingsExpander.Footer>
+        <TextBlock Text="{Binding PlaybackCore}"
+                   MaxWidth="440" TextWrapping="Wrap" TextAlignment="Right" FontSize="14" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

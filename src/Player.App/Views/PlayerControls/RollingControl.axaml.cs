@@ -10,28 +10,38 @@ namespace Player.App.Views.PlayerControls;
 /// </summary>
 public partial class RollingControl : UserControl
 {
-    private readonly PlayerControlItem _item;
+    private readonly PlayerControlItem? _item;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly TranslateTransform _transform = new();
     private double _offset;
     private double _pauseRemainingMs;
     private long _lastTickMs;
 
-    public RollingControl(PlayerControlItem item, IReadOnlyList<Control> children)
+    // 无参构造让 XAML 运行时加载器也能创建（AVLN3001）。
+    // 没有绑定控件项就没有滚动设置，此时只作为普通容器显示，不启动滚动。
+    public RollingControl() : this([])
+    {
+    }
+
+    public RollingControl(IReadOnlyList<Control> children)
     {
         InitializeComponent();
-        _item = item;
         foreach (var child in children)
         {
             InnerPanel.Children.Add(child);
         }
 
         InnerPanel.RenderTransform = _transform;
+    }
+
+    public RollingControl(PlayerControlItem item, IReadOnlyList<Control> children) : this(children)
+    {
+        _item = item;
 
         _timer.Tick += (_, _) => OnTick();
         AttachedToVisualTree += (_, _) =>
         {
-            _offset = -Math.Max(0, ((RollingControlSettings)item.Settings).PauseOffsetX);
+            _offset = -Math.Max(0, ((RollingControlSettings)_item.Settings).PauseOffsetX);
             ApplyOffset();
             _lastTickMs = Environment.TickCount64;
             _timer.Start();
@@ -41,7 +51,11 @@ public partial class RollingControl : UserControl
 
     private void OnTick()
     {
-        var settings = (RollingControlSettings)_item.Settings;
+        if (_item?.Settings is not RollingControlSettings settings)
+        {
+            return;
+        }
+
         var innerWidth = InnerPanel.Bounds.Width;
         var outerWidth = Viewport.Bounds.Width;
 

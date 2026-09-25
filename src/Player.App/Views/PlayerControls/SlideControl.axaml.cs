@@ -10,17 +10,22 @@ namespace Player.App.Views.PlayerControls;
 /// </summary>
 public partial class SlideControl : UserControl
 {
-    private readonly PlayerControlItem _item;
+    private readonly PlayerControlItem? _item;
     private readonly DispatcherTimer _timer = new();
     private readonly List<Panel> _wrappers = [];
     private readonly Queue<int> _randomPlaylist = new();
     private int _selectedIndex;
     private int _playingDirection = 1;
 
-    public SlideControl(PlayerControlItem item, IReadOnlyList<Control> children)
+    // 无参构造让 XAML 运行时加载器也能创建（AVLN3001）。
+    // 没有绑定控件项就没有轮播设置，此时只显示第一个子控件，不自动切换。
+    public SlideControl() : this([])
+    {
+    }
+
+    public SlideControl(IReadOnlyList<Control> children)
     {
         InitializeComponent();
-        _item = item;
 
         // 每个子控件套一层面板：宿主自己要用 IsVisible 表达"按规则隐藏"，
         // 轮播的"显示哪一个"改在这层面板上表达，两者互不干扰。
@@ -34,6 +39,11 @@ public partial class SlideControl : UserControl
 
         _selectedIndex = 0;
         ApplyVisibility();
+    }
+
+    public SlideControl(PlayerControlItem item, IReadOnlyList<Control> children) : this(children)
+    {
+        _item = item;
 
         var settings = (SlideControlSettings)item.Settings;
         settings.PropertyChanged += OnSettingsChanged;
@@ -51,8 +61,15 @@ public partial class SlideControl : UserControl
         };
     }
 
-    private TimeSpan GetInterval() =>
-        TimeSpan.FromSeconds(Math.Clamp(((SlideControlSettings)_item.Settings).SlideSeconds, 0.5, 3600));
+    private TimeSpan GetInterval()
+    {
+        if (_item?.Settings is not SlideControlSettings settings)
+        {
+            return TimeSpan.FromSeconds(1);
+        }
+
+        return TimeSpan.FromSeconds(Math.Clamp(settings.SlideSeconds, 0.5, 3600));
+    }
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -98,7 +115,8 @@ public partial class SlideControl : UserControl
 
     private void Advance()
     {
-        switch (((SlideControlSettings)_item.Settings).SlideMode)
+        var mode = (_item?.Settings as SlideControlSettings)?.SlideMode ?? 0;
+        switch (mode)
         {
             case 1: // 随机
                 if (_randomPlaylist.Count <= 0)

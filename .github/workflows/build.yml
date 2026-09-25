@@ -1,8 +1,10 @@
 name: build
 
-# 每次 push / PR 只编译和测试，不联网下载 libmpv：
-# 7z 包已入库（约 32MB），这里解压取出 libmpv-2.dll 再编译。
+# 每次 push / PR：解压入库的 7z 得到 libmpv-2.dll，然后编译、测试、发布。
+# 7z 包已入库（约 32MB），dll 不入库，所以这里总是解压一遍。
 # 更新 7z 包走 update-libmpv.yml（手动触发）。
+# 注：scripts/build.ps1 是给本地用的（它靠 manifest.json 判断要不要重新解压），
+#     这里不依赖 manifest，保持流程简单。
 
 on:
   push:

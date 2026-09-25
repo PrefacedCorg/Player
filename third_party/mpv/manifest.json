@@ -1,0 +1,8 @@
+{
+  "archive": "mpv-dev-x86_64-v3-20260925-git-2a4eb8067c.7z",
+  "variant": "x86_64-v3",
+  "tag": "20260925",
+  "dll": "libmpv-2.dll",
+  "size": 123621376,
+  "sha256": "1F2E0EF604686A1E2714C74F024DA1E05B3DBEDA41FEDE697FC60726E47D6466"
+}

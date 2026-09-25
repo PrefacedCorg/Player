@@ -40,7 +40,7 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain third_party/mpv)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            pkg=$(ls third_party/mpv/mpv-dev-*.7z | head -n 1)
+            pkg=$(ls third_party/mpv/mpv-dev-${{ inputs.variant }}-*.7z | head -n 1)
             echo "pkg=$(basename "$pkg")" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -52,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # 旧包会被脚本删掉，这里统一收一遍新增和删除
+          # 收一遍 7z（旧包已被脚本删掉）和 manifest.json（记录文件名与 dll 哈希）
           git add -A third_party/mpv
           git commit -m "chore(libmpv): 更新 ${{ steps.diff.outputs.pkg }}"
           git push

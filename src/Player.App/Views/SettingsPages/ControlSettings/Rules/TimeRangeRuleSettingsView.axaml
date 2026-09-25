@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rules="clr-namespace:Player.App.Rules"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.Rules.TimeRangeRuleSettingsView"
+             x:DataType="rules:TimeRangeRuleSettings">
+
+  <!-- "当前时间在指定时段"规则的设置：星期多选 + 起止时间 -->
+  <StackPanel Spacing="4">
+    <ItemsControl ItemsSource="{Binding Weekdays}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel/>
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate DataType="rules:WeekdayOption">
+          <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0 0 10 0"/>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <TextBlock Text="时段" VerticalAlignment="Center"/>
+      <TimePicker SelectedTime="{Binding StartTime, Mode=TwoWay}" MinuteIncrement="5" ClockIdentifier="24HourClock"/>
+      <TextBlock Text="到" VerticalAlignment="Center"/>
+      <TimePicker SelectedTime="{Binding EndTime, Mode=TwoWay}" MinuteIncrement="5" ClockIdentifier="24HourClock"/>
+      <TextBlock Text="（起点晚于终点时按跨零点处理）" VerticalAlignment="Center" Opacity="0.6" FontSize="12"/>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

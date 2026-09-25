@@ -4,5 +4,5 @@
              x:Class="Player.App.Views.PlayerControls.StopControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="停止" Command="{Binding StopCommand}" />
+  <Button Content="停止" Command="{Binding StopCommand}" Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

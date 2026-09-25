@@ -1,12 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:assist="clr-namespace:Player.App.Assists"
         xmlns:controls="using:Player.App.Controls">
   <Design.PreviewWith>
     <controls:TouchDragThumb />
   </Design.PreviewWith>
 
   <!-- 拖动排序用的手柄。样式与 ClassIsland 的 TouchDragThumb 一致（同样的字形与显隐规则），
-       只是把它的 FluentIcon 换成本项目已有的 FluentAvalonia 图标控件、去掉其触摸模式联动。 -->
+       只是把它的 FluentIcon 换成本项目已有的 FluentAvalonia 图标控件。 -->
   <Style Selector="controls|TouchDragThumb">
     <Setter Property="Transitions">
       <Transitions>
@@ -46,8 +47,11 @@
     <Style Selector="^[IsVisible=True]">
       <Setter Property="Opacity" Value="1" />
     </Style>
-    <!-- 本项目没有 ClassIsland 的触摸模式助手：IsExplicitVisible=False 时同样显示，
-         需要"只在触摸时出现"再补联动。 -->
+    <!-- 触摸模式联动（ClassIsland 同款）：IsExplicitVisible=False 时，手柄只在触摸屏点过之后出现，
+         鼠标用户不需要手柄——鼠标可以直接拖整行（见 AdvancedManagedContextDragBehavior）。 -->
+    <Style Selector="^[IsExplicitVisible=False]">
+      <Setter Property="IsVisible" Value="{Binding $self.(assist:PointerStateAssist.IsTouchMode)}" />
+    </Style>
     <Style Selector="^.in-listbox">
       <Setter Property="Margin" Value="-8 -8 0 -8" />
     </Style>

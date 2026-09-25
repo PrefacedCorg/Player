@@ -12,11 +12,11 @@ public partial class SettingsControl : UserControl
 {
     public SettingsControl() => InitializeComponent();
 
-    private async void OnClick(object? sender, RoutedEventArgs e)
+    private void OnClick(object? sender, RoutedEventArgs e)
     {
         if (TopLevel.GetTopLevel(this) is MainWindow window)
         {
-            await window.OpenSettingsAsync();
+            window.OpenSettings();
         }
     }
 }

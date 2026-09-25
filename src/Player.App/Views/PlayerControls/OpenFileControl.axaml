@@ -4,6 +4,7 @@
              x:Class="Player.App.Views.PlayerControls.OpenFileControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <!-- DataContext 由视觉树继承（= 主窗口 ViewModel），无需手动赋值。 -->
-  <Button Content="打开文件" Click="OnClick" />
+  <!-- DataContext 由视觉树继承（= 主窗口 ViewModel），无需手动赋值。
+       前景色取宿主上的资源，跟随控制栏设置里的"字体颜色" -->
+  <Button Content="打开文件" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

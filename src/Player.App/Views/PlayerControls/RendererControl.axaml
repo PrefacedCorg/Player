@@ -4,9 +4,13 @@
              x:Class="Player.App.Views.PlayerControls.RendererControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <!-- 只绑 VM.Renderer：真正切换渲染视图（重建 mpv 上下文、同步触摸层）由主窗口监听 VM 变化后处理 -->
+  <!-- 只绑 VM.Renderer：真正切换渲染视图（重建 mpv 上下文、同步触摸层）由主窗口监听 VM 变化后处理。
+       标签字号/前景色取宿主上的资源，跟随控制栏设置里的"字体大小/字体颜色" -->
   <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-    <TextBlock Text="渲染器" Foreground="#A8A8B0" FontSize="20" VerticalAlignment="Center" />
+    <TextBlock Text="渲染器"
+               Foreground="{DynamicResource PlayerControlSecondaryForeground}"
+               FontSize="{DynamicResource PlayerControlLargeFontSize}"
+               VerticalAlignment="Center" />
     <ComboBox ItemsSource="{Binding RendererOptions}"
               SelectedItem="{Binding Renderer}"
               VerticalAlignment="Center" />

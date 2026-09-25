@@ -4,5 +4,7 @@
              x:Class="Player.App.Views.PlayerControls.PlayPauseControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="{Binding PlayPauseText}" Command="{Binding TogglePauseCommand}" />
+  <Button Content="{Binding PlayPauseText}"
+          Command="{Binding TogglePauseCommand}"
+          Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

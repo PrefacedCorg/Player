@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
 using FluentAvalonia.UI.Controls;
 
 namespace Player.App;
@@ -7,6 +6,7 @@ namespace Player.App;
 /// <summary>
 /// 控制栏里可以摆放的控件种类。每种对应 Views/PlayerControls 下的一个独立 UserControl，
 /// 增删控件 = 加/删一个控件文件 + 在 <see cref="PlayerControlBar"/> 的工厂里加一行。
+/// 轮播/滚动/分组/堆叠是容器型控件：它们通过 <see cref="PlayerControlItem.Children"/> 承载其它控件。
 /// </summary>
 public enum PlayerControlKind
 {
@@ -33,26 +33,18 @@ public enum PlayerControlKind
 
     /// <summary>打开设置。</summary>
     Settings,
-}
 
-/// <summary>
-/// 控制栏中的一个控件项：种类 + 名称。
-/// 它出现在控制栏布局列表里就表示"已放置"。
-/// </summary>
-public partial class PlayerControlItem(PlayerControlKind kind, string title) : ObservableObject
-{
-    public PlayerControlKind Kind { get; } = kind;
+    /// <summary>轮播容器：定时切换显示容器里的控件。</summary>
+    Slide,
 
-    /// <summary>显示名称（设置页与组件库用）。</summary>
-    public string Title { get; } = title;
+    /// <summary>滚动容器：容器里的控件横向滚动显示。</summary>
+    Rolling,
 
-    /// <summary>
-    /// 图标（设置页已放置行用，14x14）。
-    /// 字号必须写在图标源上：FAIconSourceElement 生成子图标时是把 IconSource 的 FontSize
-    /// 绑过去的（见 FluentAvalonia 的 FAIconHelpers.CreateSymbolIconFromSymbolIconSource），
-    /// 元素上的 TextElement.FontSize 不起作用。
-    /// </summary>
-    public FASymbolIconSource IconSource { get; } = new() { Symbol = PlayerControlCatalog.SymbolFor(kind), FontSize = 14 };
+    /// <summary>分组容器：容器里的控件横向排成一组。</summary>
+    Group,
+
+    /// <summary>堆叠容器：容器里的控件叠放在一起。</summary>
+    Stack,
 }
 
 /// <summary>
@@ -62,11 +54,18 @@ public sealed record PlayerControlLibraryEntry(PlayerControlKind Kind, string Ti
 {
     /// <summary>图标（组件库条目用，32x32；字号写在图标源上的原因同 <see cref="PlayerControlItem.IconSource"/>）。</summary>
     public FASymbolIconSource IconSource { get; } = new() { Symbol = PlayerControlCatalog.SymbolFor(Kind), FontSize = 32 };
+
+    /// <summary>图标（符号形式，右键菜单"包裹到新容器"这类小尺寸场合用）。</summary>
+    public FASymbol Symbol => PlayerControlCatalog.SymbolFor(Kind);
+
+    /// <summary>是否是容器型控件（放置后可以往里拖其它控件）。</summary>
+    public bool IsContainer => PlayerControlCatalog.IsContainer(Kind);
 }
 
 /// <summary>
 /// 拖动载荷：条目 + 它当时所在的列表（照抄 ClassIsland 的 EditableComponentsListBoxDragData——
-/// MultiBinding 把两者打包，落点处理器靠 SourceList 区分"从控制栏里拖的"还是"从组件库拖的"）。
+/// MultiBinding 把两者打包，落点处理器靠 SourceList 区分"从控制栏里拖的"还是"从组件库拖的"，
+/// 以及"从哪个容器的子控件列表里拖的"）。
 /// </summary>
 public sealed record PlayerControlDragData(PlayerControlItem Item, System.Collections.IList SourceList)
 {
@@ -92,7 +91,7 @@ public sealed class PlayerControlDragDataConverter : Avalonia.Data.Converters.IM
 /// <summary>控制栏控件清单与默认布局。</summary>
 public static class PlayerControlCatalog
 {
-    /// <summary>全部可放置的控件，顺序即组件库里的排列顺序。</summary>
+    /// <summary>全部可放置的控件，顺序即组件库里的排列顺序（容器型控件排在最后）。</summary>
     public static IReadOnlyList<PlayerControlLibraryEntry> All { get; } =
     [
         new(PlayerControlKind.OpenFile, "打开文件", "选择媒体文件播放，多选时按顺序入队"),
@@ -103,16 +102,18 @@ public static class PlayerControlCatalog
         new(PlayerControlKind.Volume, "音量", "音量滑块与百分比，上限 200%"),
         new(PlayerControlKind.Renderer, "渲染器", "切换 Native / OpenGl / Software"),
         new(PlayerControlKind.Settings, "设置", "打开设置窗口"),
+        new(PlayerControlKind.Slide, "轮播容器", "定时切换显示容器里的控件"),
+        new(PlayerControlKind.Rolling, "滚动容器", "容器里的控件横向滚动显示"),
+        new(PlayerControlKind.Group, "分组容器", "把容器里的控件横向排成一组"),
+        new(PlayerControlKind.Stack, "堆叠容器", "把容器里的控件叠放在一起"),
     ];
 
-    /// <summary>默认布局：全部控件按默认顺序放进控制栏。</summary>
+    /// <summary>默认布局：全部普通控件按默认顺序放进控制栏（容器需要手动拖进去）。</summary>
     public static ObservableCollection<PlayerControlItem> CreateDefaultLayout() =>
-        new(All.Select(static entry => new PlayerControlItem(entry.Kind, entry.Title)));
+        new(All.Where(static entry => !entry.IsContainer)
+            .Select(static entry => new PlayerControlItem(entry.Kind, entry.Title)));
 
-    /// <summary>
-    /// 控件种类 → 图标（FluentAvalonia 内置符号字体，无需外部图标资源）。
-    /// 组件库条目与已放置行都取这里，保证两边图标一致。
-    /// </summary>
+    /// <summary>控件种类 → 图标（FluentAvalonia 内置符号字体，无需外部图标资源）。</summary>
     public static FASymbol SymbolFor(PlayerControlKind kind) => kind switch
     {
         PlayerControlKind.OpenFile => FASymbol.OpenFile,
@@ -124,6 +125,28 @@ public static class PlayerControlCatalog
         PlayerControlKind.Volume => FASymbol.Volume,
         PlayerControlKind.Renderer => FASymbol.Video,
         PlayerControlKind.Settings => FASymbol.Settings,
+        PlayerControlKind.Slide => FASymbol.SlideShow,
+        PlayerControlKind.Rolling => FASymbol.Sync,
+        PlayerControlKind.Group => FASymbol.AllApps,
+        PlayerControlKind.Stack => FASymbol.Pictures,
         _ => FASymbol.ViewAll,
+    };
+
+    /// <summary>某种控件是否是容器型控件。</summary>
+    public static bool IsContainer(PlayerControlKind kind) => kind is
+        PlayerControlKind.Slide or PlayerControlKind.Rolling or PlayerControlKind.Group or PlayerControlKind.Stack;
+
+    /// <summary>某种控件是否有自己的设置界面（轮播、滚动有参数可调，其余没有）。</summary>
+    public static bool HasSettingsView(PlayerControlKind kind) => kind is
+        PlayerControlKind.Slide or PlayerControlKind.Rolling;
+
+    /// <summary>某种控件的设置对象工厂。</summary>
+    public static PlayerControlSettings CreateSettings(PlayerControlKind kind) => kind switch
+    {
+        PlayerControlKind.Slide => new SlideControlSettings(),
+        PlayerControlKind.Rolling => new RollingControlSettings(),
+        PlayerControlKind.Group => new GroupControlSettings(),
+        PlayerControlKind.Stack => new StackControlSettings(),
+        _ => new PlayerControlSettings(),
     };
 }

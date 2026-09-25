@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="clr-namespace:Player.App.Views.SettingsPages"
+             xmlns:controlSettings="clr-namespace:Player.App.Views.SettingsPages.ControlSettings"
              xmlns:app="clr-namespace:Player.App"
              xmlns:controls="clr-namespace:Player.App.Controls"
              xmlns:behaviors="clr-namespace:Player.App.Behaviors"
@@ -27,22 +28,48 @@
                               Command="{Binding $parent[pages:ControlBarSettingsPage].MovePreviousCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
-                            <ui:FAFontIcon Glyph="&#xE76B;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                            <ui:FASymbolIcon Symbol="Back" FontSize="14"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <MenuItem Header="向右移动一位"
                               Command="{Binding $parent[pages:ControlBarSettingsPage].MoveNextCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
-                            <ui:FAFontIcon Glyph="&#xE76C;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                            <ui:FASymbolIcon Symbol="Forward" FontSize="14"/>
                         </MenuItem.Icon>
                     </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="包裹到新容器"
+                              ItemsSource="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.Containers}">
+                        <MenuItem.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"
+                                          x:CompileBindings="False">
+                                <Setter Property="Header" Value="{Binding Title}"/>
+                                <Setter Property="Icon">
+                                    <Template>
+                                        <ui:FASymbolIcon Symbol="{Binding Symbol}" FontSize="14"/>
+                                    </Template>
+                                </Setter>
+                                <Setter Property="Command"
+                                        Value="{Binding $parent[pages:ControlBarSettingsPage].CreateContainerComponentCommand}"/>
+                                <Setter Property="CommandParameter" Value="{Binding}"/>
+                            </ControlTheme>
+                        </MenuItem.ItemContainerTheme>
+                    </MenuItem>
+                    <MenuItem Header="移动到选中的容器"
+                              IsEnabled="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.IsComponentChildrenViewOpen}"
+                              Command="{Binding $parent[pages:ControlBarSettingsPage].MoveToCurrentContainerCommand}"
+                              CommandParameter="{Binding}"/>
+                    <MenuItem Header="从容器组件移出"
+                              IsEnabled="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.IsComponentChildrenViewOpen}"
+                              Command="{Binding $parent[pages:ControlBarSettingsPage].MoveComponentsToMainLinesCommand}"
+                              CommandParameter="{Binding}"/>
                     <Separator/>
                     <MenuItem Header="创建副本"
                               Command="{Binding $parent[pages:ControlBarSettingsPage].DuplicateCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
-                            <ui:FAFontIcon Glyph="&#xEEB9;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                            <ui:FASymbolIcon Symbol="Copy" FontSize="14"/>
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuFlyout>
@@ -64,7 +91,21 @@
                                 Background="Transparent"
                                 BorderThickness="0"
                                 IsVisible="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}}">
-                            <ui:FAFontIcon Glyph="&#xEBAC;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                            <ui:FASymbolIcon Symbol="More" FontSize="14"/>
+                        </Button>
+                        <Button VerticalAlignment="Center"
+                                ToolTip.Tip="查看子组件"
+                                Click="ButtonShowChildrenComponents_OnClick"
+                                Background="Transparent"
+                                BorderThickness="0">
+                            <Button.IsVisible>
+                                <MultiBinding Converter="{x:Static BoolConverters.And}" x:CompileBindings="False">
+                                    <Binding Path="IsSelected"
+                                             RelativeSource="{RelativeSource FindAncestor, AncestorType=ListBoxItem}"/>
+                                    <Binding Path="IsContainer"/>
+                                </MultiBinding>
+                            </Button.IsVisible>
+                            <ui:FASymbolIcon Symbol="Forward" FontSize="14"/>
                         </Button>
                         <Button Foreground="IndianRed"
                                 VerticalAlignment="Center"
@@ -73,7 +114,7 @@
                                 BorderThickness="0"
                                 IsVisible="{Binding IsSelected, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBoxItem}}"
                                 Click="OnRemoveClick">
-                            <ui:FAFontIcon Glyph="&#xE61D;" FontFamily="{DynamicResource SymbolThemeFontFamily}"/>
+                            <ui:FASymbolIcon Symbol="Delete" FontSize="14"/>
                         </Button>
                     </StackPanel>
                 </DataTemplate>
@@ -137,7 +178,8 @@
         <ListBox Grid.Row="2"
                  ItemsSource="{Binding Placed}"
                  Classes="component-listBox"
-                 Margin="-12 0">
+                 Margin="-12 0"
+                 SelectionChanged="SelectorComponents_OnSelectionChanged">
             <ia:Interaction.Behaviors>
                 <ia:BehaviorCollection>
                     <dnd:ManagedContextDropBehavior Handler="{Binding DropHandler}"
@@ -146,59 +188,129 @@
             </ia:Interaction.Behaviors>
         </ListBox>
 
-        <!-- ROW 3 组件库 -->
-        <TextBlock Grid.Row="3" Text="组件库"
-                   FontWeight="SemiBold"
-                   Margin="0 16 0 4"/>
-
-        <ListBox Grid.Row="4"
-                 ItemsSource="{Binding Library}"
-                 Classes="drag-source"
-                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="app:PlayerControlLibraryEntry">
-                    <Grid HorizontalAlignment="Stretch" RowDefinitions="Auto,*" ColumnDefinitions="Auto,Auto,*,Auto"
-                          Margin="0 8" Height="50">
-                        <controls:TouchDragThumb Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
-                                                 Width="24"/>
-
-                        <ui:FAIconSourceElement Grid.Column="1" Grid.Row="0"
-                                                Grid.RowSpan="2"
-                                                Width="32" Height="32"
-                                                VerticalAlignment="Center"
-                                                ClipToBounds="False"
-                                                Margin="0 -4 4 0"
-                                                IconSource="{Binding IconSource}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2"
-                                   Text="{Binding Title}"
-                                   HorizontalAlignment="Left"
-                                   VerticalAlignment="Top"
-                                   Margin="0 0 0 1"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2"
-                                   Text="{Binding Description}"
-                                   Opacity="0.75"
-                                   FontSize="12"
-                                   FontWeight="Regular"
-                                   TextWrapping="Wrap"
-                                   HorizontalAlignment="Stretch"
-                                   TextAlignment="Left"
-                                   TextTrimming="CharacterEllipsis"/>
+        <!-- ROW 3 子组件视图：查看某个容器里的控件（ClassIsland 的“此组件的子组件”面板） -->
+        <Border Grid.Row="3"
+                CornerRadius="4"
+                ClipToBounds="True"
+                IsVisible="{Binding IsComponentChildrenViewOpen}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <Grid RowDefinitions="Auto,Auto">
+                <Border Grid.Row="0" Padding="8"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="0 0 0 1">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Button Grid.Column="0"
+                                ToolTip.Tip="返回上一层级"
+                                IsVisible="{Binding CanChildrenNavigateBack}"
+                                Click="ButtonNavigateUp_OnClick"
+                                Background="Transparent"
+                                BorderThickness="0">
+                            <ui:FASymbolIcon Symbol="Back" FontSize="14"/>
+                        </Button>
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="4 0">
+                            <Run Text="此组件的子组件：" />
+                            <Run Text="{Binding CurrentContainer.Title}" FontWeight="SemiBold" />
+                        </TextBlock>
+                        <Button Grid.Column="2"
+                                ToolTip.Tip="关闭"
+                                Click="ButtonChildrenViewClose_OnClick"
+                                Background="Transparent"
+                                BorderThickness="0">
+                            <ui:FASymbolIcon Symbol="Cancel" FontSize="14"/>
+                        </Button>
                     </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-            <ListBox.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel>
-                        <ia:Interaction.Behaviors>
-                            <ia:BehaviorCollection>
-                                <behaviors:WrapPanelAutoResizeBehavior TargetWidth="225"/>
-                            </ia:BehaviorCollection>
-                        </ia:Interaction.Behaviors>
-                    </WrapPanel>
-                </ItemsPanelTemplate>
-            </ListBox.ItemsPanel>
-        </ListBox>
+                </Border>
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding CurrentContainerChildren}"
+                         Classes="component-listBox"
+                         SelectionChanged="SelectorComponents_OnSelectionChanged">
+                    <ia:Interaction.Behaviors>
+                        <ia:BehaviorCollection>
+                            <dnd:ManagedContextDropBehavior Handler="{Binding DropHandler}"
+                                                            Context="{Binding CurrentContainerChildren}"/>
+                        </ia:BehaviorCollection>
+                    </ia:Interaction.Behaviors>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- ROW 4 组件库 / 组件设置 / 高级设置：与 ClassIsland 原页面同一套标签页结构 -->
+        <TabControl Grid.Row="4" Padding="0" Margin="0 16 0 0">
+            <TabItem Header="组件库">
+                <ScrollViewer Padding="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <ListBox ItemsSource="{Binding Library}"
+                             Classes="drag-source"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="app:PlayerControlLibraryEntry">
+                                <Grid HorizontalAlignment="Stretch" RowDefinitions="Auto,*" ColumnDefinitions="Auto,Auto,*,Auto"
+                                      Margin="0 8" Height="50">
+                                    <controls:TouchDragThumb Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                                             Width="24"/>
+
+                                    <ui:FAIconSourceElement Grid.Column="1" Grid.Row="0"
+                                                            Grid.RowSpan="2"
+                                                            Width="32" Height="32"
+                                                            VerticalAlignment="Center"
+                                                            ClipToBounds="False"
+                                                            Margin="0 -4 4 0"
+                                                            IconSource="{Binding IconSource}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2"
+                                               Text="{Binding Title}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Top"
+                                               Margin="0 0 0 1"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="2"
+                                               Text="{Binding Description}"
+                                               Opacity="0.75"
+                                               FontSize="12"
+                                               FontWeight="Regular"
+                                               TextWrapping="Wrap"
+                                               HorizontalAlignment="Stretch"
+                                               TextAlignment="Left"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel>
+                                    <ia:Interaction.Behaviors>
+                                        <ia:BehaviorCollection>
+                                            <behaviors:WrapPanelAutoResizeBehavior TargetWidth="225"/>
+                                        </ia:BehaviorCollection>
+                                    </ia:Interaction.Behaviors>
+                                </WrapPanel>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="组件设置" IsVisible="{Binding IsComponentSettingsVisible}">
+                <ContentControl Content="{Binding SelectedItem.Settings}" Margin="0 8 0 0">
+                    <ContentControl.DataTemplates>
+                        <DataTemplate DataType="app:SlideControlSettings">
+                            <controlSettings:SlideControlSettingsView />
+                        </DataTemplate>
+                        <DataTemplate DataType="app:RollingControlSettings">
+                            <controlSettings:RollingControlSettingsView />
+                        </DataTemplate>
+                    </ContentControl.DataTemplates>
+                </ContentControl>
+            </TabItem>
+            <TabItem Header="高级设置" IsVisible="{Binding IsComponentAdvancedSettingsVisible}">
+                <ContentControl Content="{Binding SelectedItem}" Margin="0 8 0 0">
+                    <ContentControl.DataTemplates>
+                        <DataTemplate DataType="app:PlayerControlItem">
+                            <controlSettings:AdvancedSettingsView />
+                        </DataTemplate>
+                    </ContentControl.DataTemplates>
+                </ContentControl>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>

@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.SlideControlSettingsView"
+             x:DataType="app:SlideControlSettings">
+
+  <!-- 轮播容器的设置：切换间隔与切换模式 -->
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander Header="轮播间隔" Description="每个子控件停留的秒数。">
+      <ui:FASettingsExpander.Footer>
+        <ui:FANumberBox Width="150" Minimum="0.5" Maximum="3600" SmallChange="0.5"
+                        Value="{Binding SlideSeconds, Mode=TwoWay}" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="轮播模式"
+                           Description="循环：依次显示；随机：随机顺序；往复：到头后反方向。">
+      <ui:FASettingsExpander.Footer>
+        <ComboBox SelectedIndex="{Binding SlideMode, Mode=TwoWay}">
+          <ComboBoxItem>循环</ComboBoxItem>
+          <ComboBoxItem>随机</ComboBoxItem>
+          <ComboBoxItem>往复</ComboBoxItem>
+        </ComboBox>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

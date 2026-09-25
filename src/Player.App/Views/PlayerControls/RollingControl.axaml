@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Player.App.Views.PlayerControls.RollingControl"
+             ClipToBounds="True">
+  <!-- 滚动容器：内容比可视区宽时横向滚动（跑马灯），由代码后置按像素速度推进偏移 -->
+  <Border x:Name="Viewport" ClipToBounds="True">
+    <StackPanel x:Name="InnerPanel" Orientation="Horizontal" Spacing="16" HorizontalAlignment="Left"/>
+  </Border>
+</UserControl>

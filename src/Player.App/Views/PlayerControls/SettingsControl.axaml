@@ -4,5 +4,5 @@
              x:Class="Player.App.Views.PlayerControls.SettingsControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="设置" Click="OnClick" />
+  <Button Content="设置" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

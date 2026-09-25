@@ -1,0 +1,6 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Player.App.Views.PlayerControls.SlideControl">
+  <!-- 轮播容器：同一时刻只显示一个子控件，由代码后置的定时器轮流切换（循环/随机/往复） -->
+  <Panel x:Name="Root"/>
+</UserControl>

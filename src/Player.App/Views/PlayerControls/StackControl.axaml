@@ -1,0 +1,6 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Player.App.Views.PlayerControls.StackControl">
+  <!-- 堆叠容器：容器里的控件叠放在同一块区域里 -->
+  <Panel x:Name="Root" VerticalAlignment="Center"/>
+</UserControl>

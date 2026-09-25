@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Player.App.Views;
@@ -30,6 +31,10 @@ public partial class App : Application
             StartupTrace.Mark("MainWindow 构建完成");
             desktop.MainWindow = window;
             window.Opened += (_, _) => StartupTrace.Mark("窗口 Opened：首帧上屏，可交互");
+
+            // 设置窗口是非模态的，默认的 OnLastWindowClose 会让"关掉播放窗口后留下一个设置窗口"，
+            // 这里按播放窗口的生命周期退出。
+            desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
         }
 
         base.OnFrameworkInitializationCompleted();

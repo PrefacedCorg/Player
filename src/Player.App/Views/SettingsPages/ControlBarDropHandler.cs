@@ -14,21 +14,21 @@ namespace Player.App.Views.SettingsPages;
 /// 落点索引按指针落在目标的左半/右半决定、载荷类型决定是复制（组件库）还是移动（控制栏内），
 /// 并在拖动结束时清掉行上的 RenderTransform。
 /// <para>
-/// 唯一的本地增补：拖到组件库上时把控件从控制栏移除——ClassIsland 用右键菜单"移除"，
-/// 我们没有那个菜单，因此把"拖回组件库"作为移除入口。
+/// 落点可以是控制栏本身，也可以是某个容器里的子控件列表：跨列表拖动会把控件从源列表移到目标列表，
+/// 并且禁止把容器拖进它自己或它的子级里。
 /// </para>
 /// </summary>
 public class ControlBarDropHandler(ControlBarSettingsViewModel viewModel) : DropHandlerBase, IDragHandler
 {
     public ControlBarSettingsViewModel ViewModel { get; } = viewModel;
 
-    private ObservableCollection<PlayerControlItem>? _sourceCollection;
     private ListBox? _sourceListBox;
     private ListBoxItem? _sourceListBoxItem;
+    private ListBox? _targetListBox;
 
     /// <summary>落点索引：命中某一行时看指针在该行左半还是右半，落空则按列表中点决定首尾。</summary>
     private static (int index, bool found) GetTargetIndex(
-        ListBox listBox, DragEventArgs e, IList<PlayerControlItem> items, ListBoxItem? explicitTarget)
+        ListBox listBox, DragEventArgs e, IList<PlayerControlItem> items)
     {
         var pos = e.GetPosition(listBox);
 
@@ -50,48 +50,76 @@ public class ControlBarDropHandler(ControlBarSettingsViewModel viewModel) : Drop
 
     public override void Enter(object? sender, DragEventArgs e, object? sourceContext, object? targetContext)
     {
-        e.DragEffects = sourceContext switch
+        e.DragEffects = GetEffects(sourceContext, targetContext);
+    }
+
+    private DragDropEffects GetEffects(object? sourceContext, object? targetContext)
+    {
+        if (targetContext is not ObservableCollection<PlayerControlItem> target)
+        {
+            return DragDropEffects.None;
+        }
+
+        return sourceContext switch
         {
             // 与 ClassIsland 一致：组件库来的 = 复制，已在控制栏里的 = 移动
             PlayerControlLibraryEntry => DragDropEffects.Copy,
-            PlayerControlDragData => DragDropEffects.Move,
+            PlayerControlDragData { Item: { } item } when ViewModel.CanDropInto(item, target) => DragDropEffects.Move,
             _ => DragDropEffects.None
         };
     }
 
     public override void Drop(object? sender, DragEventArgs e, object? sourceContext, object? targetContext)
     {
-        if (sender is not ListBox listBox || targetContext is not ObservableCollection<PlayerControlItem> components)
+        if (sender is not ListBox listBox || targetContext is not ObservableCollection<PlayerControlItem> target)
         {
             return;
         }
 
-        var (targetIndex, foundTargetIndex) = GetTargetIndex(listBox, e, components, null);
-        var insertIndex = foundTargetIndex ? targetIndex + 1 : components.Count;
+        _targetListBox = listBox;
+        var (targetIndex, foundTargetIndex) = GetTargetIndex(listBox, e, target);
+        var insertIndex = foundTargetIndex ? targetIndex + 1 : target.Count;
 
         switch (sourceContext)
         {
             case PlayerControlLibraryEntry entry:
-                // 组件库来的 = 复制一份放进控制栏
-                InsertItem(components, new PlayerControlItem(entry.Kind, entry.Title), insertIndex);
+                // 组件库来的 = 复制一份放进目标列表（容器条目也一样，可以放进容器里）
+                InsertItem(target, new PlayerControlItem(entry.Kind, entry.Title), insertIndex);
                 break;
 
-            case PlayerControlDragData { Item: { } item }:
-                var sourceIndex = components.IndexOf(item);
-                if (sourceIndex < 0)
+            case PlayerControlDragData { Item: { } item, SourceList: { } sourceList }:
+                if (!ViewModel.CanDropInto(item, target))
                 {
                     return;
                 }
 
-                var moveIndex = foundTargetIndex ? targetIndex : components.Count - 1;
-                var newIndex = sourceIndex > moveIndex ? moveIndex + 1 : moveIndex;
-                MoveItem(components, sourceIndex, Math.Clamp(newIndex, 0, components.Count - 1));
+                if (ReferenceEquals(sourceList, target))
+                {
+                    // 同一个列表里移动：沿用原来的索引补偿逻辑
+                    var sourceIndex = target.IndexOf(item);
+                    if (sourceIndex < 0)
+                    {
+                        return;
+                    }
+
+                    var moveIndex = foundTargetIndex ? targetIndex : target.Count - 1;
+                    var newIndex = sourceIndex > moveIndex ? moveIndex + 1 : moveIndex;
+                    MoveItem(target, sourceIndex, Math.Clamp(newIndex, 0, target.Count - 1));
+                }
+                else
+                {
+                    // 跨列表（控制栏 ↔ 容器）：先从源列表移除，再插进目标列表
+                    sourceList.Remove(item);
+                    InsertItem(target, item, Math.Clamp(insertIndex, 0, target.Count));
+                }
+
                 break;
         }
     }
 
-    public override bool Validate(object? sender, DragEventArgs e, object? sourceContext, object? targetContext, object? state) =>
-        sourceContext is PlayerControlLibraryEntry or PlayerControlDragData;
+    public override bool Validate(
+        object? sender, DragEventArgs e, object? sourceContext, object? targetContext, object? state) =>
+        GetEffects(sourceContext, targetContext) != DragDropEffects.None;
 
     public void BeforeDragDrop(object? sender, PointerEventArgs e, object? context)
     {
@@ -101,27 +129,28 @@ public class ControlBarDropHandler(ControlBarSettingsViewModel viewModel) : Drop
         }
 
         _sourceListBoxItem = item;
-        var listBox = _sourceListBox = item.FindAncestorOfType<ListBox>();
-        if (listBox?.ItemsSource is ObservableCollection<PlayerControlItem> collection)
-        {
-            _sourceCollection = collection;
-        }
+        _sourceListBox = item.FindAncestorOfType<ListBox>();
     }
 
     public void AfterDragDrop(object? sender, PointerEventArgs e, object? context)
     {
         ClearTransform(_sourceListBoxItem);
+        ClearListTransforms(_sourceListBox);
+        ClearListTransforms(_targetListBox);
 
-        foreach (var control in _sourceListBox?.Items
+        _sourceListBoxItem = null;
+        _sourceListBox = null;
+        _targetListBox = null;
+    }
+
+    private static void ClearListTransforms(ListBox? listBox)
+    {
+        foreach (var control in listBox?.Items
                      .OfType<object>()
-                     .Select(x => _sourceListBox.ContainerFromItem(x)) ?? [])
+                     .Select(x => listBox.ContainerFromItem(x)) ?? [])
         {
             ClearTransform(control);
         }
-
-        _sourceCollection = null;
-        _sourceListBoxItem = null;
-        _sourceListBox = null;
     }
 
     private static void ClearTransform(Control? control)

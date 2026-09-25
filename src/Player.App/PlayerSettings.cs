@@ -19,7 +19,8 @@ public partial class PlayerSettings : ObservableObject
 
     /// <summary>
     /// 底部播放控制栏的布局：有序列表，元素顺序即控件在栏里的顺序，IsVisible 控制显隐。
-    /// 主窗口的控制栏宿主直接读这个列表渲染，设置页改这里即时生效。
+    /// 元素可以是容器型控件（轮播/滚动/分组/堆叠），容器里的子控件在 PlayerControlItem.Children。
+    /// 主窗口的控制栏宿主直接读这个列表递归渲染，设置页改这里即时生效。
     /// </summary>
     public ObservableCollection<PlayerControlItem> ControlBar { get; } = PlayerControlCatalog.CreateDefaultLayout();
 }

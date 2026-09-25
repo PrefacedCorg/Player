@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using HanumanInstitute.LibMpv.Avalonia;
+using Player.App.Assists;
 using Player.App.ViewModels;
 using Player.Platform;
 
@@ -26,6 +27,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // 触摸模式：触摸屏点一下才显示拖动用的手柄（见 PointerStateAssist / TouchDragThumb）
+        PointerStateAssist.Attach(this);
 
         // 应用级实时设置（App 上创建，主窗口与设置窗口共用同一份，改动即时生效）
         _settings = App.Settings;
@@ -60,20 +64,22 @@ public partial class MainWindow : Window
             EnsureTouchOverlay();
 
             // --settings：启动后直接进设置页（调试验证 / 大屏快捷入口）。放到 Dispatcher 队列里，
-            // 避免在 Opened 回调内直接 ShowDialog 触发未完成显示就弹模态窗口的问题。
+            // 等主窗口显示完成再开设置窗口，避免两个窗口同时首帧。
             if (Program.OpenSettingsOnStartup)
             {
-                Dispatcher.UIThread.Post(() => _ = OpenSettingsAsync());
+                Dispatcher.UIThread.Post(OpenSettings);
             }
         };
         Closed += (_, _) => DestroyTouchOverlay();
     }
 
     /// <summary>
-    /// 打开设置窗口（模态）。设置窗口是独立顶层窗口，
+    /// 打开设置窗口（非模态）。设置窗口是独立顶层窗口，
     /// 期间先撤掉视频区透明触摸层——它同样是顶层窗口，会抢走设置界面的点击命中。
+    /// 用 Show 而不是 ShowDialog：设置窗口开着时主窗口仍可交互（播放/暂停、看控制栏实时变化、
+    /// 在主窗口按 F6 验证触摸模式），关闭设置窗口后再恢复触摸层。
     /// </summary>
-    public async Task OpenSettingsAsync()
+    public void OpenSettings()
     {
         if (_settingsWindow is not null)
         {
@@ -85,15 +91,13 @@ public partial class MainWindow : Window
         var window = new SettingsWindow(_settings);
         _settingsWindow = window;
 
-        try
-        {
-            await window.ShowDialog(this);
-        }
-        finally
+        window.Closed += (_, _) =>
         {
             _settingsWindow = null;
             EnsureTouchOverlay();
-        }
+        };
+
+        window.Show(this);
     }
 
     private void ApplyRenderer(VideoRenderer renderer)

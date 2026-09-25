@@ -1,0 +1,228 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ruleset="clr-namespace:Player.App.Controls.Ruleset"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.AdvancedSettingsView"
+             x:DataType="app:PlayerControlItem">
+
+  <!-- 控件高级设置（照 ClassIsland 的 ComponentAdvancedSettingsControl 的全套项目）：
+       按规则隐藏 + 不透明度/背景/圆角 + 字体大小与颜色 + 对齐/宽度/边距 + GUID -->
+  <ScrollViewer HorizontalAlignment="Stretch">
+    <StackPanel Spacing="4">
+
+      <!-- 按规则隐藏 -->
+      <ui:FASettingsExpander Header="按规则隐藏"
+                             Description="在指定规则满足时，自动隐藏此控件。注意此处的隐藏不会释放控件资源。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Button Content="编辑规则集…" IsVisible="{Binding HideOnRule}">
+              <Button.Flyout>
+                <Flyout Placement="Bottom" Closed="RulesetFlyout_OnClosed">
+                  <ScrollViewer MaxHeight="520" Padding="4">
+                    <ruleset:RulesetControl Ruleset="{Binding HidingRules}" />
+                  </ScrollViewer>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding HideOnRule, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <Separator Margin="0 12 0 4" />
+      <TextBlock Text="外观" FontWeight="SemiBold" Margin="0 0 0 4" />
+
+      <!-- 不透明度 -->
+      <ui:FASettingsExpander Header="不透明度" Description="控件整体的不透明度。">
+        <ui:FASettingsExpander.Footer>
+          <Slider Width="180" Minimum="0" Maximum="1"
+                  Value="{Binding Settings.Opacity, Mode=TwoWay}"
+                  TickFrequency="0.05" IsSnapToTickEnabled="True" />
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 自定义背景颜色 -->
+      <ui:FASettingsExpander Header="自定义背景颜色"
+                             Description="控件背景颜色，禁用时将使用上级默认值。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ColorPicker VerticalAlignment="Center"
+                         Color="{Binding Settings.BackgroundColor, Mode=TwoWay}"
+                         IsVisible="{Binding Settings.IsCustomBackgroundColorEnabled}" />
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsCustomBackgroundColorEnabled, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 自定义背景不透明度 -->
+      <ui:FASettingsExpander Header="自定义背景不透明度"
+                             Description="控件背景的不透明度，禁用将使用上级默认值。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Slider Width="180" Minimum="0" Maximum="1"
+                    Value="{Binding Settings.BackgroundOpacity, Mode=TwoWay}"
+                    TickFrequency="0.05" IsSnapToTickEnabled="True"
+                    IsVisible="{Binding Settings.IsCustomBackgroundOpacityEnabled}" />
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsCustomBackgroundOpacityEnabled, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 自定义背景圆角半径 -->
+      <ui:FASettingsExpander Header="自定义背景圆角半径"
+                             Description="控件背景圆角半径，调至最大数值时左右边缘为半圆。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Slider Width="180" Minimum="0" Maximum="20"
+                    Value="{Binding Settings.CustomCornerRadius, Mode=TwoWay}"
+                    TickFrequency="0.5" IsSnapToTickEnabled="True"
+                    IsVisible="{Binding Settings.IsCustomCornerRadiusEnabled}" />
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsCustomCornerRadiusEnabled, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <Separator Margin="0 12 0 4" />
+      <TextBlock Text="字体" FontWeight="SemiBold" Margin="0 0 0 4" />
+
+      <!-- 字体大小（四档按控件的资源键下发，控件里的文本用 DynamicResource 取用） -->
+      <ui:FASettingsExpander Header="字体大小"
+                             Description="调整控件上各类字体的大小。"
+                             IsExpanded="{Binding Settings.IsResourceOverridingEnabled, Mode=OneWay}">
+        <ui:FASettingsExpander.Footer>
+          <ToggleSwitch IsChecked="{Binding Settings.IsResourceOverridingEnabled, Mode=TwoWay}" />
+        </ui:FASettingsExpander.Footer>
+        <ui:FASettingsExpanderItem Content="次级字体大小" Description="附加信息一类的小字">
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="1" Maximum="60"
+                            Value="{Binding Settings.SecondaryFontSize, Mode=TwoWay}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+        <ui:FASettingsExpanderItem Content="正文字体大小" Description="控件里的默认文字">
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="1" Maximum="60"
+                            Value="{Binding Settings.BodyFontSize, Mode=TwoWay}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+        <ui:FASettingsExpanderItem Content="强调字体大小" Description="主要信息">
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="1" Maximum="60"
+                            Value="{Binding Settings.EmphasizedFontSize, Mode=TwoWay}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+        <ui:FASettingsExpanderItem Content="大号字体大小" Description="标题一类">
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="1" Maximum="60"
+                            Value="{Binding Settings.LargeFontSize, Mode=TwoWay}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+      </ui:FASettingsExpander>
+
+      <!-- 字体颜色 -->
+      <ui:FASettingsExpander Header="字体颜色"
+                             Description="调整字体颜色，将覆盖控件自己的默认颜色。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ColorPicker VerticalAlignment="Center"
+                         Color="{Binding Settings.ForegroundColor, Mode=TwoWay}"
+                         IsVisible="{Binding Settings.IsCustomForegroundColorEnabled}" />
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsCustomForegroundColorEnabled, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <Separator Margin="0 12 0 4" />
+      <TextBlock Text="布局" FontWeight="SemiBold" Margin="0 0 0 4" />
+
+      <!-- 对齐方式 -->
+      <ui:FASettingsExpander Header="对齐方式"
+                             Description="指定控件在控制栏里占据的空间内如何对齐（左/居中/右/拉伸）。">
+        <ui:FASettingsExpander.Footer>
+          <ComboBox ItemsSource="{x:Static app:PlayerControlSettings.HorizontalAlignmentOptions}"
+                    SelectedItem="{Binding Settings.HorizontalAlignment, Mode=TwoWay}" />
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 固定宽度 -->
+      <ui:FASettingsExpander Header="固定宽度"
+                             Description="启用后，控件将使用固定宽度，不会自动适应内容宽度。">
+        <ui:FASettingsExpander.Footer>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ui:FANumberBox Width="150" Minimum="0" Maximum="5000"
+                            Value="{Binding Settings.FixedWidth, Mode=TwoWay}"
+                            IsVisible="{Binding Settings.IsFixedWidthEnabled}" />
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsFixedWidthEnabled, Mode=TwoWay}" />
+          </StackPanel>
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 宽度限制 -->
+      <ui:FASettingsExpander Header="宽度限制"
+                             Description="限制控件的最大和最小宽度。"
+                             IsVisible="{Binding !Settings.IsFixedWidthEnabled}">
+        <ui:FASettingsExpanderItem>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsMinWidthEnabled, Mode=TwoWay}" />
+            <TextBlock Text="最小宽度" VerticalAlignment="Center" />
+          </StackPanel>
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="0" Maximum="5000"
+                            Value="{Binding Settings.MinWidth, Mode=TwoWay}"
+                            IsVisible="{Binding Settings.IsMinWidthEnabled}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+        <ui:FASettingsExpanderItem>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ToggleSwitch VerticalAlignment="Center"
+                          IsChecked="{Binding Settings.IsMaxWidthEnabled, Mode=TwoWay}" />
+            <TextBlock Text="最大宽度" VerticalAlignment="Center" />
+          </StackPanel>
+          <ui:FASettingsExpanderItem.Footer>
+            <ui:FANumberBox Width="150" Minimum="0" Maximum="5000"
+                            Value="{Binding Settings.MaxWidth, Mode=TwoWay}"
+                            IsVisible="{Binding Settings.IsMaxWidthEnabled}" />
+          </ui:FASettingsExpanderItem.Footer>
+        </ui:FASettingsExpanderItem>
+      </ui:FASettingsExpander>
+
+      <!-- 自定义边距 -->
+      <ui:FASettingsExpander Header="自定义边距"
+                             Description="设置此控件与其他控件的距离。"
+                             IsExpanded="{Binding Settings.IsCustomMarginEnabled, Mode=OneWay}">
+        <ui:FASettingsExpander.Footer>
+          <ToggleSwitch VerticalAlignment="Center"
+                        IsChecked="{Binding Settings.IsCustomMarginEnabled, Mode=TwoWay}" />
+        </ui:FASettingsExpander.Footer>
+        <ui:FASettingsExpanderItem>
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto,*" RowDefinitions="*,Auto,Auto,Auto,*" Margin="0 8">
+            <ui:FANumberBox Grid.Row="2" Grid.Column="1" Width="90"
+                            Value="{Binding Settings.MarginLeft, Mode=TwoWay}" />
+            <ui:FANumberBox Grid.Row="1" Grid.Column="2" Width="90"
+                            Value="{Binding Settings.MarginTop, Mode=TwoWay}" />
+            <ui:FANumberBox Grid.Row="2" Grid.Column="3" Width="90"
+                            Value="{Binding Settings.MarginRight, Mode=TwoWay}" />
+            <ui:FANumberBox Grid.Row="3" Grid.Column="2" Width="90"
+                            Value="{Binding Settings.MarginBottom, Mode=TwoWay}" />
+            <Rectangle Grid.Row="2" Grid.Column="2"
+                       Width="100" Height="40" Margin="4"
+                       Stroke="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                       StrokeThickness="1"
+                       StrokeDashArray="2"
+                       RadiusX="4" RadiusY="4" />
+          </Grid>
+        </ui:FASettingsExpanderItem>
+      </ui:FASettingsExpander>
+
+      <!-- GUID -->
+      <TextBlock Text="{Binding Id}" Margin="0 8 0 0" Opacity="0.6" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

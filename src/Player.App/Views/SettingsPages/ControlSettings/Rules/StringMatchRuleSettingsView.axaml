@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rules="clr-namespace:Player.App.Rules"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.Rules.StringMatchRuleSettingsView"
+             x:DataType="rules:StringMatchingSettings">
+
+  <!-- "媒体标题匹配"规则的设置：匹配文字 + 是否按正则匹配 -->
+  <StackPanel Orientation="Horizontal" Spacing="6">
+    <TextBox Width="200" Watermark="要匹配的文字" Text="{Binding Text, Mode=TwoWay}" />
+    <ToggleButton Content="正则" ToolTip.Tip="把上面的文字当作正则表达式"
+                  IsChecked="{Binding UseRegex, Mode=TwoWay}" />
+  </StackPanel>
+</UserControl>

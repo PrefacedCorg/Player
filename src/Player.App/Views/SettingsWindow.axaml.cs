@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FluentAvalonia.UI.Controls;
+using Player.App.Assists;
 using Player.App.ViewModels;
 using Player.Platform;
 
@@ -28,6 +29,9 @@ public partial class SettingsWindow : Window
     public SettingsWindow(PlayerSettings settings)
     {
         InitializeComponent();
+
+        // 触摸模式：触摸屏点一下才显示拖动用的手柄（见 PointerStateAssist / TouchDragThumb）
+        PointerStateAssist.Attach(this);
 
         _viewModel = new SettingsWindowViewModel(settings);
         DataContext = _viewModel;

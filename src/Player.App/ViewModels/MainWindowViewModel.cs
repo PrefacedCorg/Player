@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using HanumanInstitute.LibMpv;
 using HanumanInstitute.LibMpv.Avalonia;
 using Player.Platform;
+using Player.App.Rules;
 using Player.Playback;
 
 namespace Player.App.ViewModels;
@@ -19,6 +20,9 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IReadOnlyList<string> _startupFiles;
     private readonly DispatcherTimer _diagnosticsTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _surfaceReadyTimer = new() { Interval = TimeSpan.FromMilliseconds(30) };
+
+    /// <summary>规则集里的时间/星期条件与播放状态无关，靠这个定时器每分钟重新求值一次。</summary>
+    private readonly DispatcherTimer _rulesTimer = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly Process _currentProcess = Process.GetCurrentProcess();
     private TimeSpan _lastCpuTime;
     private DateTime _lastCpuSampleAt = DateTime.UtcNow;
@@ -94,6 +98,9 @@ public partial class MainWindowViewModel : ObservableObject
         _diagnosticsTimer.Tick += (_, _) => RunDiagnostics();
         _diagnosticsTimer.Start();
 
+        _rulesTimer.Tick += (_, _) => PlayerRuleService.NotifyStatusChanged();
+        _rulesTimer.Start();
+
         // 渲染表面就绪即开始加载，与界面初始化并行，避免串行等待拖慢首帧
         _surfaceReadyTimer.Tick += (_, _) => CheckSurfaceReady();
     }
@@ -166,6 +173,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _engine?.Stop();
         MediaTitle = null;
+        SyncRuleContext(false, true, null);
     }
 
     /// <summary>
@@ -233,6 +241,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         StatusText = $"{item.Kind} · {item.Title}";
         MediaTitle = item.Title;
+        SyncRuleContext(PlayerRuleContext.IsPlaying, PlayerRuleContext.IsPaused, item.Title);
         StartupTrace.Mark($"LoadFile 返回：{_loadCallMs} ms · {item.Title}");
         UpdateTimingText();
     }
@@ -412,6 +421,25 @@ public partial class MainWindowViewModel : ObservableObject
         }, DispatcherPriority.Background);
     }
 
+    /// <summary>
+    /// 把播放状态同步到规则上下文；有变化才通知规则刷新（引擎心跳很频繁，避免每次都刷新）。
+    /// </summary>
+    private static void SyncRuleContext(bool isPlaying, bool isPaused, string? title)
+    {
+        var changed = PlayerRuleContext.IsPlaying != isPlaying
+                      || PlayerRuleContext.IsPaused != isPaused
+                      || !string.Equals(PlayerRuleContext.MediaTitle, title, StringComparison.Ordinal);
+        if (!changed)
+        {
+            return;
+        }
+
+        PlayerRuleContext.IsPlaying = isPlaying;
+        PlayerRuleContext.IsPaused = isPaused;
+        PlayerRuleContext.MediaTitle = title;
+        PlayerRuleService.NotifyStatusChanged();
+    }
+
     private void ApplyState(MediaEngineState state)
     {
         PlayPauseText = state.IsPaused ? "播放" : "暂停";
@@ -447,6 +475,8 @@ public partial class MainWindowViewModel : ObservableObject
         {
             MediaTitle = state.Title;
         }
+
+        SyncRuleContext(!state.IsPaused, state.IsPaused, MediaTitle);
     }
 
     /// <summary>500ms 诊断心跳：刷新硬解信息，并在拿到 video-codec 后落一次快照。</summary>

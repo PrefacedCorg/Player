@@ -4,10 +4,11 @@
              x:Class="Player.App.Views.PlayerControls.TimeDisplayControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <!-- MinWidth + 居中：时间文本长度变化时不带动整行跳动（等宽数字字体下宽度本来就稳定） -->
+  <!-- MinWidth + 居中：时间文本长度变化时不带动整行跳动（等宽数字字体下宽度本来就稳定）。
+       字号/前景色取宿主（PlayerControlHost）上的资源，跟随控制栏设置里的"字体大小/字体颜色" -->
   <TextBlock Text="{Binding TimeText}"
-             Foreground="#F0F0F0"
-             FontSize="15"
+             Foreground="{DynamicResource PlayerControlForeground}"
+             FontSize="{DynamicResource PlayerControlBodyFontSize}"
              MinWidth="120"
              VerticalAlignment="Center" />
 </UserControl>

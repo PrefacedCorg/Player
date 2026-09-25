@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.RollingControlSettingsView"
+             x:DataType="app:RollingControlSettings">
+
+  <!-- 滚动容器的设置：滚动速度、末尾暂停、初始偏移 -->
+  <StackPanel Spacing="4">
+    <ui:FASettingsExpander Header="滚动速度" Description="每秒横向滚动的像素数。">
+      <ui:FASettingsExpander.Footer>
+        <ui:FANumberBox Width="150" Minimum="1" Maximum="2000"
+                        Value="{Binding SpeedPixelPerSecond, Mode=TwoWay}" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="滚完一轮后暂停" Description="滚动到末尾后停一会儿再从右侧进入。">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <ui:FANumberBox Width="150" Minimum="0" Maximum="60"
+                          Value="{Binding PauseSeconds, Mode=TwoWay}"
+                          IsVisible="{Binding IsPauseEnabled}" />
+          <ToggleSwitch VerticalAlignment="Center"
+                        IsChecked="{Binding IsPauseEnabled, Mode=TwoWay}" />
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="初始偏移" Description="开始滚动前向左偏移的像素数。">
+      <ui:FASettingsExpander.Footer>
+        <ui:FANumberBox Width="150" Minimum="0" Maximum="2000"
+                        Value="{Binding PauseOffsetX, Mode=TwoWay}" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

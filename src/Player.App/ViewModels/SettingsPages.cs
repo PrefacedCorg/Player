@@ -95,11 +95,13 @@ public sealed record VideoScalingOption(VideoScalingMode Mode, string Title, str
 
 /// <summary>
 /// 控制栏。控件本身是组件化的（一个控件一个文件，见 Views/PlayerControls），
-/// 这里管"哪些控件放在栏里、按什么顺序"：已放置的横向排列（与真实控制栏同序），
-/// 未放置的留在组件库，两边靠拖拽互通，改动由主窗口立即重建生效。
+/// 这里管"哪些控件放在栏里、按什么顺序、容器里放什么"：可以像 ClassIsland 那样把控件包裹进容器、
+/// 把控件移进/移出容器、逐层查看容器里的子控件，改动由主窗口立即重建生效。
 /// </summary>
 public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 {
+    private readonly Stack<PlayerControlItem> _navigationStack = new();
+
     public ControlBarSettingsViewModel(PlayerSettings settings)
         : base("控制栏", "拖动调整控制栏里的控件与顺序", FASymbol.Repair)
     {
@@ -110,46 +112,309 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
     /// <summary>拖放处理器：拖动源的落点都交给它（与 ClassIsland 一样挂在 ViewModel 上）。</summary>
     public ControlBarDropHandler DropHandler { get; }
 
-    /// <summary>已放置的控件：列表顺序就是控制栏里的左右顺序。</summary>
+    /// <summary>控制栏根列表：顺序就是控制栏里的左右顺序。</summary>
     public ObservableCollection<PlayerControlItem> Placed { get; }
 
-    /// <summary>
-    /// 组件库：固定列出全部可用控件（与 ClassIsland 的组件池一致——不是"还没放的"，
-    /// 而是"可以放的"，所以不会越用越空）。拖到上方即往控制栏里再放一个。
-    /// </summary>
+    /// <summary>当前打开的容器里的子控件列表（未打开子组件视图时为 null）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<PlayerControlItem>? _currentContainerChildren;
+
+    /// <summary>当前打开的容器（null = 未打开子组件视图）。</summary>
+    [ObservableProperty]
+    private PlayerControlItem? _currentContainer;
+
+    /// <summary>当前选中的控件：组件设置、高级设置两个标签页都作用于它。</summary>
+    [ObservableProperty]
+    private PlayerControlItem? _selectedItem;
+
+    /// <summary>是否处于"查看子组件"层级。</summary>
+    public bool IsComponentChildrenViewOpen => CurrentContainer is not null;
+
+    /// <summary>是否可以返回上一层级。</summary>
+    public bool CanChildrenNavigateBack => _navigationStack.Count > 0;
+
+    /// <summary>选中的控件是否有自己的设置页（轮播、滚动有参数可调，其余没有）。</summary>
+    public bool IsComponentSettingsVisible =>
+        SelectedItem is not null && PlayerControlCatalog.HasSettingsView(SelectedItem.Kind);
+
+    /// <summary>选中的控件是否显示高级设置页（每个控件都有外观与隐藏规则可调）。</summary>
+    public bool IsComponentAdvancedSettingsVisible => SelectedItem is not null;
+
+    partial void OnSelectedItemChanged(PlayerControlItem? value)
+    {
+        OnPropertyChanged(nameof(IsComponentSettingsVisible));
+        OnPropertyChanged(nameof(IsComponentAdvancedSettingsVisible));
+    }
+
+    /// <summary>组件库：固定列出全部可用控件（与 ClassIsland 的组件池一致——不是"还没放的"，
+    /// 而是"可以放的"，所以不会越用越空）。拖到上方即往控制栏里再放一个。</summary>
     public IReadOnlyList<PlayerControlLibraryEntry> Library => PlayerControlCatalog.All;
 
-    /// <summary>把控件移出控制栏（拖回组件库）。</summary>
-    public void Remove(PlayerControlItem item) => Placed.Remove(item);
+    /// <summary>可用容器（右键菜单"包裹到新容器"的来源）。</summary>
+    public IReadOnlyList<PlayerControlLibraryEntry> Containers { get; } =
+        [.. PlayerControlCatalog.All.Where(static entry => entry.IsContainer)];
 
-    /// <summary>右键菜单"向左移动"：与拖动排序等价的按钮入口（ClassIsland 的行菜单同款）。</summary>
-    public void MovePrevious(PlayerControlItem item) => MoveBy(item, -1);
+    #region 层级导航
 
-    /// <summary>右键菜单"向右移动"。</summary>
-    public void MoveNext(PlayerControlItem item) => MoveBy(item, 1);
-
-    /// <summary>右键菜单"创建副本"。</summary>
-    public void Duplicate(PlayerControlItem item)
+    /// <summary>进入一个容器的子组件视图。</summary>
+    public void EnterContainer(PlayerControlItem container)
     {
-        var index = Placed.IndexOf(item);
-        if (index < 0)
+        if (!container.IsContainer)
         {
             return;
         }
 
-        Placed.Insert(index + 1, new PlayerControlItem(item.Kind, item.Title));
+        // 已经在这个容器里就不再压栈（避免重复进入同层）
+        if (CurrentContainer is { } current && !ReferenceEquals(current, container))
+        {
+            _navigationStack.Push(current);
+        }
+
+        SetCurrentContainer(container);
+    }
+
+    /// <summary>返回上一层级。</summary>
+    public void NavigateBack()
+    {
+        if (!_navigationStack.TryPop(out var parent))
+        {
+            SetCurrentContainer(null);
+            return;
+        }
+
+        SetCurrentContainer(parent);
+    }
+
+    /// <summary>关闭子组件视图，回到控制栏根层。</summary>
+    public void CloseChildrenView()
+    {
+        _navigationStack.Clear();
+        SetCurrentContainer(null);
+    }
+
+    private void SetCurrentContainer(PlayerControlItem? container)
+    {
+        CurrentContainer = container;
+        CurrentContainerChildren = container?.Children;
+        SelectedItem = null;
+        OnPropertyChanged(nameof(IsComponentChildrenViewOpen));
+        OnPropertyChanged(nameof(CanChildrenNavigateBack));
+    }
+
+    #endregion
+
+    #region 控件操作
+
+    /// <summary>把控件移出控制栏。</summary>
+    public void Remove(PlayerControlItem item)
+    {
+        var list = FindOwnerList(item);
+        if (list is null)
+        {
+            return;
+        }
+
+        list.Remove(item);
+        if (ReferenceEquals(SelectedItem, item))
+        {
+            SelectedItem = null;
+        }
+
+        // 删除的是当前打开的容器（或它的上层容器）时，退回根层，避免停留在已失效的层级
+        if (CurrentContainer is not null && (ReferenceEquals(CurrentContainer, item) || !IsInTree(CurrentContainer)))
+        {
+            CloseChildrenView();
+        }
+    }
+
+    /// <summary>右键菜单"向左移动一位"：与拖动排序等价的按钮入口（ClassIsland 的行菜单同款）。</summary>
+    public void MovePrevious(PlayerControlItem item) => MoveBy(item, -1);
+
+    /// <summary>右键菜单"向右移动一位"。</summary>
+    public void MoveNext(PlayerControlItem item) => MoveBy(item, 1);
+
+    /// <summary>右键菜单"创建副本"：连同外观设置与子控件一起复制。</summary>
+    public void Duplicate(PlayerControlItem item)
+    {
+        var list = FindOwnerList(item);
+        var index = list?.IndexOf(item) ?? -1;
+        if (list is null || index < 0)
+        {
+            return;
+        }
+
+        list.Insert(index + 1, item.Clone());
+    }
+
+    /// <summary>右键菜单"包裹到新容器"：在控件原位置放一个容器，把控件装进去。</summary>
+    public void WrapIntoContainer(PlayerControlItem item, PlayerControlKind containerKind)
+    {
+        var list = FindOwnerList(item);
+        var index = list?.IndexOf(item) ?? -1;
+        if (list is null || index < 0 || !PlayerControlCatalog.IsContainer(containerKind))
+        {
+            return;
+        }
+
+        var entry = PlayerControlCatalog.All.First(e => e.Kind == containerKind);
+        var container = new PlayerControlItem(containerKind, entry.Title);
+
+        list.Insert(index, container);
+        list.Remove(item);
+        container.Children?.Add(item);
+        SelectedItem = container;
+    }
+
+    /// <summary>右键菜单"移动到选中的容器"：把控件放进当前打开的容器里。</summary>
+    public void MoveToCurrentContainer(PlayerControlItem item)
+    {
+        if (CurrentContainer is not { } container || ReferenceEquals(item, container) || IsAncestorOf(item, container))
+        {
+            return;
+        }
+
+        var list = FindOwnerList(item);
+        if (list is null || ReferenceEquals(list, container.Children))
+        {
+            return;
+        }
+
+        list.Remove(item);
+        container.Children?.Add(item);
+        SelectedItem = item;
+    }
+
+    /// <summary>右键菜单"从容器组件移出"：把当前容器里的控件放回控制栏。</summary>
+    public void MoveOutOfCurrentContainer(PlayerControlItem item)
+    {
+        if (CurrentContainer?.Children is not { } children || !children.Remove(item))
+        {
+            return;
+        }
+
+        Placed.Add(item);
+        SelectedItem = item;
     }
 
     private void MoveBy(PlayerControlItem item, int offset)
     {
-        var from = Placed.IndexOf(item);
+        var list = FindOwnerList(item);
+        var from = list?.IndexOf(item) ?? -1;
         var to = from + offset;
 
-        if (from >= 0 && to >= 0 && to < Placed.Count)
+        if (list is not null && from >= 0 && to >= 0 && to < list.Count)
         {
-            Placed.Move(from, to);
+            list.Move(from, to);
         }
     }
+
+    #endregion
+
+    #region 树查找
+
+    /// <summary>找到控件所在的列表（控制栏根列表或某个容器的子控件列表）。</summary>
+    public ObservableCollection<PlayerControlItem>? FindOwnerList(PlayerControlItem item)
+    {
+        if (Placed.Contains(item))
+        {
+            return Placed;
+        }
+
+        return FindOwnerListIn(Placed, item);
+    }
+
+    private static ObservableCollection<PlayerControlItem>? FindOwnerListIn(
+        IEnumerable<PlayerControlItem> items, PlayerControlItem target)
+    {
+        foreach (var item in items)
+        {
+            if (item.Children is not { } children)
+            {
+                continue;
+            }
+
+            if (children.Contains(target))
+            {
+                return children;
+            }
+
+            if (FindOwnerListIn(children, target) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>找到某个控件列表所属的容器（控制栏根列表返回 null）。</summary>
+    public PlayerControlItem? FindOwnerContainer(ObservableCollection<PlayerControlItem> list)
+    {
+        return ReferenceEquals(list, Placed) ? null : FindOwnerContainerIn(Placed, list);
+    }
+
+    /// <summary>落点是否合法：不能把控件拖进它自己或它自己的子级里。</summary>
+    public bool CanDropInto(PlayerControlItem item, ObservableCollection<PlayerControlItem> targetList)
+    {
+        if (FindOwnerContainer(targetList) is not { } owner)
+        {
+            return true;
+        }
+
+        return !ReferenceEquals(owner, item) && !IsAncestorOf(item, owner);
+    }
+
+    private static PlayerControlItem? FindOwnerContainerIn(
+        IEnumerable<PlayerControlItem> items, ObservableCollection<PlayerControlItem> target)
+    {
+        foreach (var item in items)
+        {
+            if (item.Children is not { } children)
+            {
+                continue;
+            }
+
+            if (ReferenceEquals(children, target))
+            {
+                return item;
+            }
+
+            if (FindOwnerContainerIn(children, target) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>控件（含它的子级）是否还在控制栏布局树里。</summary>
+    private bool IsInTree(PlayerControlItem item) =>
+        IsInTreeIn(Placed, item);
+
+    private static bool IsInTreeIn(IEnumerable<PlayerControlItem> items, PlayerControlItem target)
+    {
+        foreach (var item in items)
+        {
+            if (ReferenceEquals(item, target))
+            {
+                return true;
+            }
+
+            if (item.Children is { } children && IsInTreeIn(children, target))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>candidate 是否是 node 的祖先（含自身判断交给调用方）。</summary>
+    private static bool IsAncestorOf(PlayerControlItem candidate, PlayerControlItem node) =>
+        candidate.Children is { } children && IsInTreeIn(children, node);
+
+    #endregion
 }
 
 /// <summary>音频。音量上限与引擎侧一致（mpv volume-max 已放宽到 200）。</summary>

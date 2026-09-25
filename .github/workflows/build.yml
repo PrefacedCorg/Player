@@ -35,3 +35,17 @@ jobs:
 
       - name: 测试
         run: dotnet test Player.slnx -c Release --no-build
+
+      - name: 发布
+        run: >
+          dotnet publish src/Player.App/Player.App.csproj -c Release -r win-x64
+          --self-contained false -p:DebugType=none -o publish/win-x64
+
+      # PR 只验证能否编译，不占 artifact 额度
+      - name: 上传产物
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Player-win-x64
+          path: publish/win-x64
+          retention-days: 7

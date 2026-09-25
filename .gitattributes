@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# 入库的 7z 是二进制，别做换行符归一
+*.7z binary

@@ -10,19 +10,27 @@
 - Windows x64
 - PowerShell（仅用于下载 libmpv）
 
-### 第 1 步：下载 libmpv
+### 第 1 步：解压 libmpv
 
-libmpv 原生库不随 NuGet 分发，官方也没有预编译包，必须单独取（约 112 MB）：
+libmpv 不随 NuGet 分发，官方也没有单独的预编译 dll。仓库里存的是它的 7z 包
+（约 32 MB，来自 [shinchiro/mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake)
+的 `mpv-dev-x86_64-v3`），编译前解压出 dll 即可：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/fetch-libmpv.ps1
+powershell -ExecutionPolicy Bypass -File scripts/extract-libmpv.ps1
 ```
 
-脚本会把 `libmpv-2.dll` 放到 `third_party\mpv\win-x64\`，已存在且大小正常时会自动跳过。
+产出 `third_party\mpv\win-x64\libmpv-2.dll`（约 118 MB）。该目录写在 `.gitignore` 里，
+仓库只存 7z 不存 dll，所以换机器或清理后要重跑一次。
 
-> 这个目录写在 `.gitignore` 里（体积太大不入库），所以换机器或清理后要重跑一次。
-> 下载源是 LibMpv 项目维护的 Windows x64 构建；脚本用 `media.githubusercontent.com` 端点取真实内容，
-> 因为 `raw.githubusercontent.com` 返回的是 Git LFS 指针文件。
+> 需要 7z：Windows 装 7-Zip，Linux 装 `p7zip-full`。
+> `x86_64-v3` 需要 CPU 支持 AVX2；老机器改用 `x86_64` 变体。
+
+要更新这个 7z 包（手动触发 GitHub Actions 的 update-libmpv，或本地执行）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/fetch-libmpv.ps1 -Force
+```
 
 ### 第 2 步：编译
 
@@ -71,9 +79,8 @@ powershell -ExecutionPolicy Bypass -File scripts/register-open-with.ps1
 
 **运行报错说找不到 libmpv**
 
-编译时不会因为缺 libmpv 而报错（csproj 里是 `Condition="Exists(...)"`），但运行时会失败。检查
-`third_party\mpv\win-x64\libmpv-2.dll` 是否存在、是否大于 10 MB。小于 10 MB 多半是下成了 LFS 指针文件，
-重跑一次下载脚本。
+编译时不会因为缺 libmpv 而报错（csproj 里是 `Condition="Exists(...)"`），但运行时会失败。先跑
+`scripts/extract-libmpv.ps1`，再检查 `third_party\mpv\win-x64\libmpv-2.dll` 是否生成、是否大于 10 MB。
 
 **`dotnet restore` / `dotnet build` 卡很久不动**
 

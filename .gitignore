@@ -4,8 +4,10 @@ obj/
 .vs/
 *.user
 
-# libmpv 原生库体积大（约 120MB），不入库，用 scripts/fetch-libmpv.ps1 获取
-/third_party/
+# libmpv 以 7z 包形式入库（约 32MB，远低于单文件上限），
+# dll 由编译前解压得到（见 .github/workflows/build.yml），属本地产物，不入库。
+# 更新 7z：手动跑 update-libmpv 工作流，或本地执行 scripts/fetch-libmpv.ps1。
+/third_party/mpv/win-x64/
 
 # 冒烟测试用的生成素材
 /test-media/

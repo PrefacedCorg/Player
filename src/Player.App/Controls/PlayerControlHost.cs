@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Player.App.Rules;
 
@@ -98,12 +99,12 @@ public class PlayerControlHost : Border
             : default;
 
         // 对齐方式参与行面板的整行排布（居左/居中/居右/拉伸分组）：改它除了改自身，
-        // 还要让父面板重新测量——Avalonia 的对齐属性只影响自身排列，不会触发父面板
-        // 重新 Arrange，行面板不重排的话对齐怎么调都不动。
+        // 还要直接让父面板重新排列。不能只 InvalidateMeasure 自身——对齐不影响期望尺寸，
+        // 布局系统看到 DesiredSize 没变就不会重排父面板（表现为"开关一下固定宽度才刷新"）。
         if (HorizontalAlignment != settings.HorizontalAlignment)
         {
             HorizontalAlignment = settings.HorizontalAlignment;
-            InvalidateMeasure();
+            (Parent as Layoutable)?.InvalidateArrange();
         }
 
         SecondaryFontSize = settings.SecondaryFontSize;

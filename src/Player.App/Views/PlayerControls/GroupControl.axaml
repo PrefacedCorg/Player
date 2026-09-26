@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.GroupControl">
-  <!-- 分组容器：容器里的控件横向排成一组 -->
-  <StackPanel x:Name="Root" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"/>
+  <!-- 分组容器：内部用行面板（与整行同一套布局规则）——组内放对齐分割线即可做居左/居中/居右；
+       中列在左右内容之间居中（两侧间隙相等），而不是压分组几何中心 -->
+  <controls:PlayerControlLinePanel x:Name="Root" VerticalAlignment="Center" CenterBetweenContent="True"/>
 </UserControl>

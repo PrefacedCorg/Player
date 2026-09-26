@@ -13,7 +13,7 @@ public static class PlayerControlFactory
     /// <summary>创建一个控件项对应的宿主控件（含容器内的子控件）。</summary>
     public static Control Build(PlayerControlItem item, object? dataContext)
     {
-        var host = new PlayerControlHost(item) { Child = CreateCore(item, dataContext) };
+        var host = new PlayerControlHost(item) { Content = CreateCore(item, dataContext) };
         return host;
     }
 
@@ -53,6 +53,8 @@ public static class PlayerControlFactory
             PlayerControlKind.Next => new NextControl(),
             PlayerControlKind.LoopMode => new LoopModeControl(),
             PlayerControlKind.DebugInfo => new DebugInfoControl(),
+            // 对齐分割线：本身不显示任何内容，行面板只认它的 Kind 来分区
+            PlayerControlKind.Divider => null,
             _ => null,
         };
 

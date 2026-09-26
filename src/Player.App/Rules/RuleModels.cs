@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
+using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluentAvalonia.UI.Controls;
 
@@ -41,13 +42,17 @@ public partial class Ruleset : ObservableObject
     /// <summary>是否反转整个规则集的判断。</summary>
     [ObservableProperty] private bool _isReversed;
 
-    /// <summary>满足状态。</summary>
-    [ObservableProperty] private int _state;
+    /// <summary>满足状态（运行时求值，不落盘）。</summary>
+    [ObservableProperty]
+    [JsonIgnore]
+    private int _state;
 
-    /// <summary>规则组。</summary>
+    /// <summary>规则组（get-only 集合，STJ 不填充，持久化走 RulesetConverter 的 children 字段）。</summary>
+    [JsonIgnore]
     public ObservableCollection<RuleGroup> Groups { get; } = [];
 
-    /// <summary>逻辑模式在界面下拉框里的索引（0 任一满足、1 全部满足）。</summary>
+    /// <summary>逻辑模式在界面下拉框里的索引（0 任一满足、1 全部满足；绑定辅助，不落盘）。</summary>
+    [JsonIgnore]
     public int ModeIndex
     {
         get => (int)Mode;
@@ -72,7 +77,8 @@ public partial class Ruleset : ObservableObject
 /// <summary>一个规则组：组内若干规则按 <see cref="Mode"/> 组合。</summary>
 public partial class RuleGroup : ObservableObject
 {
-    /// <summary>规则条目。</summary>
+    /// <summary>规则条目（get-only 集合，STJ 不填充，持久化走 RuleGroupConverter 的 children 字段）。</summary>
+    [JsonIgnore]
     public ObservableCollection<Rule> Rules { get; } = [];
 
     /// <summary>组内规则之间的逻辑模式。</summary>
@@ -84,10 +90,13 @@ public partial class RuleGroup : ObservableObject
     /// <summary>是否启用本组。</summary>
     [ObservableProperty] private bool _isEnabled = true;
 
-    /// <summary>满足状态。</summary>
-    [ObservableProperty] private int _state;
+    /// <summary>满足状态（运行时求值，不落盘）。</summary>
+    [ObservableProperty]
+    [JsonIgnore]
+    private int _state;
 
-    /// <summary>逻辑模式在界面下拉框里的索引（0 任一满足、1 全部满足）。</summary>
+    /// <summary>逻辑模式在界面下拉框里的索引（0 任一满足、1 全部满足；绑定辅助，不落盘）。</summary>
+    [JsonIgnore]
     public int ModeIndex
     {
         get => (int)Mode;
@@ -193,7 +202,8 @@ public partial class TimeRangeRuleSettings : ObservableObject
     /// <summary>是否满足的时段终点（不含，小于起点时按跨零点处理）。</summary>
     [ObservableProperty] private TimeSpan _endTime = TimeSpan.FromHours(23) + TimeSpan.FromMinutes(59);
 
-    /// <summary>七个星期选项（周一在前，与界面顺序一致）。</summary>
+    /// <summary>七个星期选项（周一在前，与界面顺序一致）。get-only 集合，持久化走转换器的 weekdays 字段。</summary>
+    [JsonIgnore]
     public ObservableCollection<WeekdayOption> Weekdays { get; } =
     [
         new("周一"), new("周二"), new("周三"), new("周四"), new("周五"), new("周六"), new("周日"),

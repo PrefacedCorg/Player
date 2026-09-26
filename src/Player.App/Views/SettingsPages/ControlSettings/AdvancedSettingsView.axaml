@@ -142,12 +142,41 @@
 
       <!-- 对齐方式 -->
       <ui:FASettingsExpander Header="对齐方式"
-                             Description="指定控件在控制栏里占据的空间内如何对齐（左/居中/右/拉伸）。">
+                             Description="组件内部的对齐：开了固定宽度时内容在这个组件里靠左/居中/右，没开时没有可见效果。整行的左右/左中右布局用「对齐分割线」组件控制。">
         <ui:FASettingsExpander.Footer>
           <ComboBox ItemsSource="{x:Static app:PlayerControlSettings.HorizontalAlignmentOptions}"
                     SelectedItem="{Binding Settings.HorizontalAlignment, Mode=TwoWay}" />
         </ui:FASettingsExpander.Footer>
       </ui:FASettingsExpander>
+
+      <!-- 列内填充 -->
+      <ui:FASettingsExpander Header="列内填充"
+                             Description="对齐分割线分出的左右两列里：开启后此组件充满它占的那一段（独占一列时充满整列）；关闭则按内容自然宽度贴边。">
+        <ui:FASettingsExpander.Footer>
+          <ToggleSwitch VerticalAlignment="Center"
+                        IsChecked="{Binding Settings.IsColumnFillEnabled, Mode=TwoWay}" />
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
+      <!-- 分割线：列比例（只在选中对齐分割线时显示，见 code-behind；区块单独把 DataContext
+           定到 Settings 上并声明具体类型，编译绑定才认得 LeftWeight/RightWeight） -->
+      <StackPanel x:Name="DividerSettings" Spacing="4" IsVisible="False"
+                  x:DataType="app:DividerControlSettings" DataContext="{Binding Settings}">
+        <TextBlock Text="分割线" FontWeight="SemiBold" Margin="0 0 0 4" />
+        <ui:FASettingsExpander Header="列比例"
+                               Description="左右两列的宽度比例（Grid 的 2*/1* 语义）。一根分割线时两项都用；两根时第一根的左比例管左列、第二根的右比例管右列（中间列 Auto 自适应）。">
+          <ui:FASettingsExpander.Footer>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <ui:FANumberBox Width="110" Minimum="0.1" Maximum="100" SmallChange="0.5"
+                             Header="左列"
+                             Value="{Binding LeftWeight, Mode=TwoWay}" />
+              <ui:FANumberBox Width="110" Minimum="0.1" Maximum="100" SmallChange="0.5"
+                             Header="右列"
+                             Value="{Binding RightWeight, Mode=TwoWay}" />
+            </StackPanel>
+          </ui:FASettingsExpander.Footer>
+        </ui:FASettingsExpander>
+      </StackPanel>
 
       <!-- 固定宽度 -->
       <ui:FASettingsExpander Header="固定宽度"

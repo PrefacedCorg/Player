@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using Avalonia.Layout;
 using FluentAvalonia.UI.Controls;
 
 namespace Player.App;
@@ -61,6 +60,9 @@ public enum PlayerControlKind
 
     /// <summary>调试信息：播放状态、起播时序与解码/CPU 诊断（一个组件占一行）。</summary>
     DebugInfo,
+
+    /// <summary>对齐分割线：本身不显示任何内容，只用来把一行分成左右 / 左中右区域。</summary>
+    Divider,
 
     /// <summary>轮播容器：定时切换显示容器里的控件。</summary>
     Slide,
@@ -139,6 +141,7 @@ public static class PlayerControlCatalog
         new(PlayerControlKind.Next, "下一个", "播放队列里的下一个文件"),
         new(PlayerControlKind.LoopMode, "循环模式", "循环切换：单个循环 / 列表循环 / 单个播放 / 随机播放"),
         new(PlayerControlKind.DebugInfo, "调试信息", "播放状态、起播时序与解码/CPU 诊断"),
+        new(PlayerControlKind.Divider, "对齐分割线", "本身不显示，按根数定整行列定义：0 根整组居中、1 根分左右（*,*）、2 根分左中右（*,Auto,*）。一行最多放两根，多余的没有效果"),
         new(PlayerControlKind.Slide, "轮播容器", "定时切换显示容器里的控件"),
         new(PlayerControlKind.Rolling, "滚动容器", "容器里的控件横向滚动显示"),
         new(PlayerControlKind.Group, "分组容器", "把容器里的控件横向排成一组"),
@@ -147,8 +150,8 @@ public static class PlayerControlCatalog
 
     /// <summary>
     /// 默认布局（三行，照 ClassIsland-2.0 主界面多行的结构）：
-    /// 第一行进度条独占；第二行分左右中三栏（三个分组容器，对齐方式走分组容器
-    /// 高级设置里的「对齐方式」）；第三行调试信息算一个组件占一行。
+    /// 第一行进度条独占；第二行两根对齐分割线分左中右（*,Auto,*：居中组左右对称，整行居中让
+    /// 播放/暂停正好在正中间）；第三行调试信息算一个组件占一行。
     /// </summary>
     public static ObservableCollection<PlayerControlLine> CreateDefaultLayout()
     {
@@ -156,20 +159,22 @@ public static class PlayerControlCatalog
         var positionLine = new PlayerControlLine();
         positionLine.Children.Add(Item(PlayerControlKind.Position));
 
-        // 第二行：居左 关闭/最小化/全屏 · 居中 上一个/回退/播放暂停/快进/下一个（左右对称，
-        // 行面板的整行居中让播放/暂停正好在整行正中间）· 居右 音量/渲染器/循环模式/设置
+        // 第二行：分割线分区（*,Auto,*）—— 居左 关闭/最小化/全屏 · 居中 上一个/回退/播放暂停/快进/
+        // 下一个（左右对称 → 播放/暂停正好在整行正中间）· 居右 音量/渲染器/循环模式/设置
         var buttonsLine = new PlayerControlLine();
-        buttonsLine.Children.Add(Group(HorizontalAlignment.Left,
+        buttonsLine.Children.Add(Group(
             Item(PlayerControlKind.Close),
             Item(PlayerControlKind.Minimize),
             Item(PlayerControlKind.Fullscreen)));
-        buttonsLine.Children.Add(Group(HorizontalAlignment.Center,
+        buttonsLine.Children.Add(Item(PlayerControlKind.Divider));
+        buttonsLine.Children.Add(Group(
             Item(PlayerControlKind.Previous),
             Item(PlayerControlKind.Rewind),
             Item(PlayerControlKind.PlayPause),
             Item(PlayerControlKind.FastForward),
             Item(PlayerControlKind.Next)));
-        buttonsLine.Children.Add(Group(HorizontalAlignment.Right,
+        buttonsLine.Children.Add(Item(PlayerControlKind.Divider));
+        buttonsLine.Children.Add(Group(
             Item(PlayerControlKind.Volume),
             Item(PlayerControlKind.Renderer),
             Item(PlayerControlKind.LoopMode),
@@ -191,11 +196,10 @@ public static class PlayerControlCatalog
     private static PlayerControlItem Item(PlayerControlKind kind) =>
         new(kind, All.First(entry => entry.Kind == kind).Title);
 
-    /// <summary>创建一个分组容器并把控件装进去（默认布局用，对齐方式直接写进高级设置里的对齐属性）。</summary>
-    private static PlayerControlItem Group(HorizontalAlignment alignment, params PlayerControlItem[] children)
+    /// <summary>创建一个分组容器并把控件装进去（默认布局用）。</summary>
+    private static PlayerControlItem Group(params PlayerControlItem[] children)
     {
         var group = new PlayerControlItem(PlayerControlKind.Group, "分组容器");
-        group.Settings.HorizontalAlignment = alignment;
         foreach (var child in children)
         {
             group.Children!.Add(child);
@@ -225,6 +229,7 @@ public static class PlayerControlCatalog
         PlayerControlKind.Next => FASymbol.Next,
         PlayerControlKind.LoopMode => FASymbol.RepeatAll,
         PlayerControlKind.DebugInfo => FASymbol.Code,
+        PlayerControlKind.Divider => FASymbol.DockLeft,
         PlayerControlKind.Slide => FASymbol.SlideShow,
         PlayerControlKind.Rolling => FASymbol.Sync,
         PlayerControlKind.Group => FASymbol.AllApps,
@@ -247,6 +252,7 @@ public static class PlayerControlCatalog
         PlayerControlKind.Rolling => new RollingControlSettings(),
         PlayerControlKind.Group => new GroupControlSettings(),
         PlayerControlKind.Stack => new StackControlSettings(),
+        PlayerControlKind.Divider => new DividerControlSettings(),
         _ => new PlayerControlSettings(),
     };
 }

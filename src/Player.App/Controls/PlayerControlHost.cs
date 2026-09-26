@@ -2,8 +2,8 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
-using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Player.App.Rules;
 
 namespace Player.App.Controls;
@@ -12,8 +12,13 @@ namespace Player.App.Controls;
 /// 控制栏控件的宿主（对应 ClassIsland 的 ComponentPresenter 的职责）：把 PlayerControlItem 上的
 /// 不透明度/背景/圆角/宽度/边距/对齐/字号/前景色套在真正的控件外面，并按"按规则隐藏"的求值结果
 /// 控制可见性。容器型控件的子控件也各自有一个宿主。
+/// <para>
+/// 用 <see cref="ContentControl"/> 而不是 Border：对齐方式是<b>组件内部</b>的对齐（ClassIsland 同款）——
+/// 开了固定宽度时内容在这个组件的区域里靠左/中/右，没开固定宽度时组件宽=内容宽，对齐没有可见效果。
+/// Border 会把子内容拉满没有内容对齐概念，ContentControl 的 HorizontalContentAlignment 才承载得了这个语义。
+/// </para>
 /// </summary>
-public class PlayerControlHost : Border
+public class PlayerControlHost : ContentControl
 {
     /// <summary>未自定义字体颜色时的文字默认前景色（与各控件原有的硬编码一致）。</summary>
     private static readonly IBrush DefaultForeground = new SolidColorBrush(Color.Parse("#F0F0F0"));
@@ -98,14 +103,10 @@ public class PlayerControlHost : Border
             ? new Thickness(settings.MarginLeft, settings.MarginTop, settings.MarginRight, settings.MarginBottom)
             : default;
 
-        // 对齐方式参与行面板的整行排布（居左/居中/居右/拉伸分组）：改它除了改自身，
-        // 还要直接让父面板重新排列。不能只 InvalidateMeasure 自身——对齐不影响期望尺寸，
-        // 布局系统看到 DesiredSize 没变就不会重排父面板（表现为"开关一下固定宽度才刷新"）。
-        if (HorizontalAlignment != settings.HorizontalAlignment)
-        {
-            HorizontalAlignment = settings.HorizontalAlignment;
-            (Parent as Layoutable)?.InvalidateArrange();
-        }
+        // 对齐方式是组件内部的对齐（ClassIsland 同款）：开了固定宽度时内容在这个组件里
+        // 靠左/中/右；没开固定宽度时组件宽=内容宽，对齐没有可见效果。行内的整行排布
+        // （左右/左中右分区）由「对齐分割线」组件负责，跟这个属性无关。
+        HorizontalContentAlignment = settings.HorizontalAlignment;
 
         SecondaryFontSize = settings.SecondaryFontSize;
         BodyFontSize = settings.BodyFontSize;
@@ -166,7 +167,21 @@ public class PlayerControlHost : Border
         IsVisible = !hide;
     }
 
-    private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e) => ApplyAppearance();
+    private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        ApplyAppearance();
+
+        // 「列内填充」等影响行面板排布的设置变化时，沿视觉树找到所在行面板让它重排——
+        // 改属性只影响组件自身，不会自动触发父面板的 ArrangeOverride
+        for (var visual = (Visual)this; visual is not null; visual = visual.GetVisualParent())
+        {
+            if (visual is PlayerControlLinePanel panel)
+            {
+                panel.InvalidateArrange();
+                break;
+            }
+        }
+    }
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
     {

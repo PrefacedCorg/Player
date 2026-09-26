@@ -50,6 +50,7 @@ public partial class PlayerControlSettings : ObservableObject
     #region 布局
 
     [ObservableProperty] private HorizontalAlignment _horizontalAlignment = HorizontalAlignment.Stretch;
+    [ObservableProperty] private bool _isColumnFillEnabled;
     [ObservableProperty] private bool _isFixedWidthEnabled;
     [ObservableProperty] private double _fixedWidth = 200;
     [ObservableProperty] private bool _isMinWidthEnabled;
@@ -82,6 +83,7 @@ public partial class PlayerControlSettings : ObservableObject
         IsCustomCornerRadiusEnabled = source.IsCustomCornerRadiusEnabled;
         CustomCornerRadius = source.CustomCornerRadius;
         HorizontalAlignment = source.HorizontalAlignment;
+        IsColumnFillEnabled = source.IsColumnFillEnabled;
         IsFixedWidthEnabled = source.IsFixedWidthEnabled;
         FixedWidth = source.FixedWidth;
         IsMinWidthEnabled = source.IsMinWidthEnabled;
@@ -105,6 +107,7 @@ public partial class SlideControlSettings : PlayerControlSettings, IPlayerContai
     /// <summary>轮播模式：0 循环、1 随机、2 往复。</summary>
     [ObservableProperty] private int _slideMode;
 
+    [System.Text.Json.Serialization.JsonIgnore]
     public ObservableCollection<PlayerControlItem> Children { get; } = [];
 
     public override void CopyFrom(PlayerControlSettings source)
@@ -133,6 +136,7 @@ public partial class RollingControlSettings : PlayerControlSettings, IPlayerCont
     /// <summary>开始滚动前的初始偏移（像素）。</summary>
     [ObservableProperty] private double _pauseOffsetX;
 
+    [System.Text.Json.Serialization.JsonIgnore]
     public ObservableCollection<PlayerControlItem> Children { get; } = [];
 
     public override void CopyFrom(PlayerControlSettings source)
@@ -151,11 +155,37 @@ public partial class RollingControlSettings : PlayerControlSettings, IPlayerCont
 /// <summary>分组容器的设置：子控件在容器内横向排开。</summary>
 public partial class GroupControlSettings : PlayerControlSettings, IPlayerContainerSettings
 {
+    [System.Text.Json.Serialization.JsonIgnore]
     public ObservableCollection<PlayerControlItem> Children { get; } = [];
+}
+
+/// <summary>
+/// 对齐分割线的设置：左右两列的宽度比例（Grid 的 2*/1* 语义）。
+/// 一根分割线时「左列比例:右列比例」两个都用；两根时第一根的左比例管左列、
+/// 第二根的右比例管右列（中间列是 Auto 自适应，不吃比例）。
+/// </summary>
+public partial class DividerControlSettings : PlayerControlSettings
+{
+    /// <summary>左列宽度比例（默认 1 = 1*）。</summary>
+    [ObservableProperty] private double _leftWeight = 1d;
+
+    /// <summary>右列宽度比例（默认 1 = 1*）。</summary>
+    [ObservableProperty] private double _rightWeight = 1d;
+
+    public override void CopyFrom(PlayerControlSettings source)
+    {
+        base.CopyFrom(source);
+        if (source is DividerControlSettings divider)
+        {
+            LeftWeight = divider.LeftWeight;
+            RightWeight = divider.RightWeight;
+        }
+    }
 }
 
 /// <summary>堆叠容器的设置：子控件在容器内叠放。</summary>
 public partial class StackControlSettings : PlayerControlSettings, IPlayerContainerSettings
 {
+    [System.Text.Json.Serialization.JsonIgnore]
     public ObservableCollection<PlayerControlItem> Children { get; } = [];
 }

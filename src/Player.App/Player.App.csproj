@@ -7,6 +7,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 托盘图标（ClassIsland 的 AppLogo 同款用法：编译进程序集 + 复制到输出目录，
+         WindowIcon("Assets/...") 的相对路径构造对两种来源都有效） -->
+    <AvaloniaResource Include="Assets\TrayIcon.png" />
+    <None Include="Assets\TrayIcon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- libmpv 原生库不随 NuGet 包分发，需自行下载：scripts/fetch-libmpv.ps1 -->
     <None Include="..\..\third_party\mpv\win-x64\libmpv-2.dll"
           Link="libmpv-2.dll"

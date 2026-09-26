@@ -11,13 +11,23 @@
       <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0" />
     </StackPanel>
 
-    <ui:FASettingsExpander Header="音量上限"
-                           Description="允许放大到的最大值，超过 100% 为软件增益，可能削波失真">
+    <ui:FASettingsExpander Header="音量限制"
+                           Description="音量允许的范围（双头滑块）：下限防误触调静音，超过 100% 为软件增益，可能削波失真">
       <ui:FASettingsExpander.Footer>
         <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-          <Slider Minimum="100" Maximum="200" Width="300" Value="{Binding MaxVolume, Mode=TwoWay}" />
-          <TextBlock Text="{Binding MaxVolume, StringFormat='{}{0:F0}%'}"
-                     FontSize="16" MinWidth="64" TextAlignment="Right" VerticalAlignment="Center" />
+          <!-- 双头范围滑块：左头=音量下限，右头=音量上限 -->
+          <ui:FARangeSlider Width="300"
+                            Minimum="0"
+                            Maximum="200"
+                            RangeStart="{Binding MinVolume, Mode=TwoWay}"
+                            RangeEnd="{Binding MaxVolume, Mode=TwoWay}"
+                            StepFrequency="1" />
+          <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+            <TextBlock Text="{Binding MinVolume, StringFormat='下限 {0:F0}%'}"
+                       FontSize="16" MinWidth="72" TextAlignment="Right" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding MaxVolume, StringFormat='上限 {0:F0}%'}"
+                       FontSize="16" MinWidth="72" TextAlignment="Right" VerticalAlignment="Center" />
+          </StackPanel>
         </StackPanel>
       </ui:FASettingsExpander.Footer>
     </ui:FASettingsExpander>

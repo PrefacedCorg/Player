@@ -215,13 +215,9 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void Next() => NavigateNext(byUser: true);
 
-    /// <summary>回退（快退 10 秒）。</summary>
+    /// <summary>跳转 ±N 秒：快进/回退控件按各自「组件设置」里配置的秒数调用。</summary>
     [RelayCommand]
-    private void SeekBackward() => SeekRelative(-10d);
-
-    /// <summary>快进（快进 10 秒）。</summary>
-    [RelayCommand]
-    private void SeekForward() => SeekRelative(10d);
+    private void SeekBy(int seconds) => SeekRelative(seconds);
 
     /// <summary>循环模式：点击循环切换 单个循环 → 列表循环 → 单个播放 → 随机播放。</summary>
     [RelayCommand]

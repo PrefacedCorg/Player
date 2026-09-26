@@ -1,23 +1,83 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="Player.App.Views.PlayerControls.VolumeControl"
-             x:DataType="vm:MainWindowViewModel">
+             PointerWheelChanged="OnPointerWheelChanged">
 
-  <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-    <Slider Width="150"
-            Minimum="0"
-            Maximum="200"
-            Value="{Binding Volume, Mode=TwoWay}"
-            VerticalAlignment="Center" />
+  <Grid>
+    <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
 
-    <!-- 百分比右对齐 + 固定宽度：数字位数变化时不带动布局抖动。
-         字号/前景色取宿主（PlayerControlHost）上的资源，跟随控制栏设置里的"字体大小/字体颜色" -->
-    <TextBlock Text="{Binding Volume, StringFormat='{}{0:F0}%'}"
-               Foreground="{DynamicResource PlayerControlForeground}"
-               FontSize="{DynamicResource PlayerControlBodyFontSize}"
-               MinWidth="52"
-               TextAlignment="Right"
-               VerticalAlignment="Center" />
-  </StackPanel>
+      <!-- 竖直弹窗模式：点击弹出竖直滑块（默认隐藏，见 code-behind） -->
+      <Button x:Name="FlyoutButton"
+              Content="音量"
+              Click="OnFlyoutClick"
+              IsVisible="False"
+              Foreground="{DynamicResource PlayerControlForeground}" />
+
+      <!-- 横向模式：滑块横着摆在数字旁边（默认显示） -->
+      <Slider x:Name="HorizontalSlider"
+              Width="150"
+              Minimum="0"
+              Maximum="200"
+              VerticalAlignment="Center"
+              ValueChanged="OnSliderChanged" />
+
+      <!-- 数字：只读显示（显示/隐藏百分号、字号/前景色随控制栏设置，见 code-behind） -->
+      <TextBlock x:Name="NumberDisplay"
+                 MinWidth="52"
+                 TextAlignment="Right"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource PlayerControlForeground}"
+                 FontSize="{DynamicResource PlayerControlBodyFontSize}" />
+
+      <!-- 数字：可点击编辑（FANumberBox 精确到个位，NumberFormatter 控制百分号，默认隐藏）。
+           ValueChanged 是 TypedEventHandler，XAML 字符串绑不了，事件在 code-behind 构造里订阅 -->
+      <ui:FANumberBox x:Name="NumberBox"
+                      Width="110"
+                      Minimum="0"
+                      Maximum="200"
+                      SmallChange="1"
+                      LargeChange="10"
+                      SpinButtonPlacementMode="Compact"
+                      VerticalAlignment="Center"
+                      IsVisible="False" />
+    </StackPanel>
+
+    <!-- 竖直弹窗（点滑块外自动关闭） -->
+    <Popup x:Name="Flyout"
+           IsLightDismissEnabled="True"
+           PlacementTarget="{Binding #FlyoutButton}"
+           VerticalOffset="-6">
+      <Border Background="#F2202020"
+              BorderBrush="#44FFFFFF"
+              BorderThickness="1"
+              CornerRadius="8"
+              Padding="12 10">
+        <!-- HorizontalAlignment=Center：竖直滑块在弹窗内左右居中（数字文本比滑块宽，不居中会偏左） -->
+        <StackPanel Spacing="8" HorizontalAlignment="Center">
+          <!-- 弹窗里的数字：EditableNumber 开启时换成可编辑框（与横排同款），否则只读文本 -->
+          <TextBlock x:Name="FlyoutNumber"
+                     TextAlignment="Center"
+                     Foreground="{DynamicResource PlayerControlForeground}"
+                     FontSize="{DynamicResource PlayerControlBodyFontSize}" />
+          <ui:FANumberBox x:Name="FlyoutNumberBox"
+                          Width="110"
+                          Minimum="0"
+                          Maximum="200"
+                          SmallChange="1"
+                          LargeChange="10"
+                          SpinButtonPlacementMode="Compact"
+                          HorizontalAlignment="Center"
+                          IsVisible="False" />
+          <Slider x:Name="VerticalSlider"
+                  Orientation="Vertical"
+                  Height="170"
+                  Width="34"
+                  Minimum="0"
+                  Maximum="200"
+                  ValueChanged="OnSliderChanged" />
+        </StackPanel>
+      </Border>
+    </Popup>
+  </Grid>
 </UserControl>

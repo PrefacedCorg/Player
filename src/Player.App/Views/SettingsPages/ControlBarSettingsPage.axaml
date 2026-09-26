@@ -344,6 +344,12 @@
                         <DataTemplate DataType="app:RollingControlSettings">
                             <controlSettings:RollingControlSettingsView />
                         </DataTemplate>
+                        <DataTemplate DataType="app:SeekStepControlSettings">
+                            <controlSettings:SeekStepControlSettingsView />
+                        </DataTemplate>
+                        <DataTemplate DataType="app:VolumeControlSettings">
+                            <controlSettings:VolumeControlSettingsView />
+                        </DataTemplate>
                     </ContentControl.DataTemplates>
                 </ContentControl>
             </TabItem>

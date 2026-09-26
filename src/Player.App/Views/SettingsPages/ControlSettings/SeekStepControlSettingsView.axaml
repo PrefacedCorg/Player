@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.SeekStepControlSettingsView"
+             x:DataType="app:SeekStepControlSettings">
+
+  <!-- 快进/回退共用（同一套设置）：点击按钮时跳转的秒数 -->
+  <StackPanel Spacing="8">
+    <ui:FASettingsExpander Header="跳转秒数"
+                           Description="点击快进/回退按钮时跳过的秒数（两个控件共用此设置）">
+      <ui:FASettingsExpander.Footer>
+        <ui:FANumberBox Width="140"
+                       Minimum="1"
+                       Maximum="600"
+                       SmallChange="1"
+                       LargeChange="10"
+                       Value="{Binding Seconds, Mode=TwoWay}"
+                       SpinButtonPlacementMode="Compact" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

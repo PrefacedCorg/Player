@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.VolumeControlSettingsView"
+             x:DataType="app:VolumeControlSettings">
+
+  <!-- 音量控件的组件设置：数字显示（扩展卡片）/ 弹窗方式 / 滚轮 / 系统音量接管 -->
+  <StackPanel Spacing="8">
+
+    <!-- 扩展卡片：总开关控制数字显示，展开后的子项配置显示方式（FASettingsExpander 是 ItemsControl，
+         子项用 FASettingsExpanderItem：Content 主文案 + Description 副文案 + Footer 右侧开关） -->
+    <ui:FASettingsExpander Header="显示音量百分比"
+                           Description="在音量控件上显示数字；展开配置显示方式">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding ShowVolumeNumber, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+
+      <ui:FASettingsExpanderItem Content="显示百分号"
+                                 Description="数字后面显示 %"
+                                 IsEnabled="{Binding ShowVolumeNumber}">
+        <ui:FASettingsExpanderItem.Footer>
+          <ToggleSwitch IsChecked="{Binding ShowPercent, Mode=TwoWay}" OnContent="开" OffContent="关" />
+        </ui:FASettingsExpanderItem.Footer>
+      </ui:FASettingsExpanderItem>
+
+      <ui:FASettingsExpanderItem Content="数字直接编辑"
+                                 Description="音量数字变成可输入的数字框（精确到个位，百分号同步显示）"
+                                 IsEnabled="{Binding ShowVolumeNumber}">
+        <ui:FASettingsExpanderItem.Footer>
+          <ToggleSwitch IsChecked="{Binding EditableNumber, Mode=TwoWay}" OnContent="开" OffContent="关" />
+        </ui:FASettingsExpanderItem.Footer>
+      </ui:FASettingsExpanderItem>
+
+      <ui:FASettingsExpanderItem Content="隐藏滑块"
+                                 Description="开启「数字直接编辑」后可用：只留数字框，不再显示滑块"
+                                 IsEnabled="{Binding EditableNumber}">
+        <ui:FASettingsExpanderItem.Footer>
+          <ToggleSwitch IsChecked="{Binding HideSlider, Mode=TwoWay}" OnContent="开" OffContent="关" />
+        </ui:FASettingsExpanderItem.Footer>
+      </ui:FASettingsExpanderItem>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="竖直弹窗调节"
+                           Description="开启后点击「音量」弹出竖直滑块（像系统音量），外面的数字隐藏；关闭时滑块横着摆在数字旁">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding VerticalFlyout, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="鼠标滚轮步进"
+                           Description="在音量控件上滚动滚轮调节的步进（0 = 禁用滚轮）">
+      <ui:FASettingsExpander.Footer>
+        <ui:FANumberBox Width="140"
+                       Minimum="0"
+                       Maximum="50"
+                       SmallChange="1"
+                       Value="{Binding MouseWheelStep, Mode=TwoWay}"
+                       SpinButtonPlacementMode="Compact" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="直接调整系统音量"
+                            Description="0–100% 只调系统音量（软件侧固定 100%）；超过 100% 后系统固定 100%、增益交给软件（100–200%）。系统被外部调到 100% 以下时，控件直接跟随系统值">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding UseSystemVolume, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

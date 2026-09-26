@@ -183,6 +183,74 @@ public partial class DividerControlSettings : PlayerControlSettings
     }
 }
 
+/// <summary>快进/回退共用的设置：点击按钮时跳转的秒数。</summary>
+public partial class SeekStepControlSettings : PlayerControlSettings
+{
+    /// <summary>点击快进/回退跳转的秒数（默认 10）。</summary>
+    [ObservableProperty] private int _seconds = 10;
+
+    public override void CopyFrom(PlayerControlSettings source)
+    {
+        base.CopyFrom(source);
+        if (source is SeekStepControlSettings seek)
+        {
+            Seconds = seek.Seconds;
+        }
+    }
+}
+
+/// <summary>音量控件的设置：显示/交互方式与系统音量接管。</summary>
+public partial class VolumeControlSettings : PlayerControlSettings
+{
+    /// <summary>显示音量数字（「显示音量百分比」扩展卡片的总开关；关闭后滑块旁不再显示数字）。</summary>
+    [ObservableProperty] private bool _showVolumeNumber = true;
+
+    /// <summary>数字后面显示百分号。</summary>
+    [ObservableProperty] private bool _showPercent = true;
+
+    /// <summary>点击弹出竖直滑块（像系统音量 Flyout）；关闭时滑块横着摆在数字旁边。竖直弹窗下数字只在弹窗里显示。</summary>
+    [ObservableProperty] private bool _verticalFlyout;
+
+    /// <summary>数字可直接点击编辑（NumericUpDown，精确到个位，随设置显示百分号）。</summary>
+    [ObservableProperty] private bool _editableNumber;
+
+    /// <summary>隐藏滑块：只留数字。仅在「数字直接编辑」开启时有效。</summary>
+    [ObservableProperty] private bool _hideSlider;
+
+    /// <summary>鼠标滚轮调节音量的步进（0 = 禁用滚轮）。</summary>
+    [ObservableProperty] private int _mouseWheelStep = 5;
+
+    /// <summary>
+    /// 直接调整系统音量：0–100% 只调系统（软件侧固定 100%）；超过 100% 后系统固定 100%、
+    /// 增益交给软件（100–200%）。系统被外部调到 100% 以下时，控件直接跟随系统值。
+    /// </summary>
+    [ObservableProperty] private bool _useSystemVolume;
+
+    /// <summary>关掉「数字直接编辑」时，依赖它的「隐藏滑块」一并关闭。</summary>
+    partial void OnEditableNumberChanged(bool value)
+    {
+        if (!value)
+        {
+            HideSlider = false;
+        }
+    }
+
+    public override void CopyFrom(PlayerControlSettings source)
+    {
+        base.CopyFrom(source);
+        if (source is VolumeControlSettings volume)
+        {
+            ShowVolumeNumber = volume.ShowVolumeNumber;
+            ShowPercent = volume.ShowPercent;
+            VerticalFlyout = volume.VerticalFlyout;
+            EditableNumber = volume.EditableNumber;
+            HideSlider = volume.HideSlider;
+            MouseWheelStep = volume.MouseWheelStep;
+            UseSystemVolume = volume.UseSystemVolume;
+        }
+    }
+}
+
 /// <summary>堆叠容器的设置：子控件在容器内叠放。</summary>
 public partial class StackControlSettings : PlayerControlSettings, IPlayerContainerSettings
 {

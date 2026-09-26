@@ -494,8 +494,11 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 }
 
 /// <summary>音频。音量上限与引擎侧一致（mpv volume-max 已放宽到 200）。</summary>
-public partial class AudioSettingsViewModel() : SettingsPageViewModel("音频", "音量上限与音频输出", FASymbol.Audio)
+public partial class AudioSettingsViewModel() : SettingsPageViewModel("音频", "音量限制与音频输出", FASymbol.Audio)
 {
+    [ObservableProperty]
+    private double _minVolume = 0;
+
     [ObservableProperty]
     private double _maxVolume = 200;
 

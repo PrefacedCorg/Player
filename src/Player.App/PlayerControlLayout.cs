@@ -241,9 +241,11 @@ public static class PlayerControlCatalog
     public static bool IsContainer(PlayerControlKind kind) => kind is
         PlayerControlKind.Slide or PlayerControlKind.Rolling or PlayerControlKind.Group or PlayerControlKind.Stack;
 
-    /// <summary>某种控件是否有自己的设置界面（轮播、滚动有参数可调，其余没有）。</summary>
+    /// <summary>某种控件是否有自己的设置界面（「组件设置」标签页的显示开关：轮播/滚动有参数，
+    /// 快进/回退可调跳转秒数，音量有显示方式与系统音量接管）。</summary>
     public static bool HasSettingsView(PlayerControlKind kind) => kind is
-        PlayerControlKind.Slide or PlayerControlKind.Rolling;
+        PlayerControlKind.Slide or PlayerControlKind.Rolling
+        or PlayerControlKind.Rewind or PlayerControlKind.FastForward or PlayerControlKind.Volume;
 
     /// <summary>某种控件的设置对象工厂。</summary>
     public static PlayerControlSettings CreateSettings(PlayerControlKind kind) => kind switch
@@ -253,6 +255,8 @@ public static class PlayerControlCatalog
         PlayerControlKind.Group => new GroupControlSettings(),
         PlayerControlKind.Stack => new StackControlSettings(),
         PlayerControlKind.Divider => new DividerControlSettings(),
+        PlayerControlKind.Rewind or PlayerControlKind.FastForward => new SeekStepControlSettings(),
+        PlayerControlKind.Volume => new VolumeControlSettings(),
         _ => new PlayerControlSettings(),
     };
 }

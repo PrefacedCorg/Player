@@ -23,6 +23,10 @@ public static class PlayerControlFactory
         PlayerControlKind.Rolling => new RollingControl(item, BuildChildren(item, dataContext)),
         PlayerControlKind.Group => new GroupControl(BuildChildren(item, dataContext)),
         PlayerControlKind.Stack => new StackControl(BuildChildren(item, dataContext)),
+        // 这三个要读自己 item 的组件设置（跳转秒数 / 音量交互与系统音量模式），构造时把 item 传进去
+        PlayerControlKind.Rewind => new RewindControl(item),
+        PlayerControlKind.FastForward => new FastForwardControl(item),
+        PlayerControlKind.Volume => new VolumeControl(item),
         _ => CreateLeaf(item.Kind, dataContext),
     };
 
@@ -41,17 +45,14 @@ public static class PlayerControlFactory
             PlayerControlKind.Stop => new StopControl(),
             PlayerControlKind.Position => new PositionControl { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center },
             PlayerControlKind.TimeDisplay => new TimeDisplayControl(),
-            PlayerControlKind.Volume => new VolumeControl(),
             PlayerControlKind.Renderer => new RendererControl(),
-            PlayerControlKind.Settings => new SettingsControl(),
             PlayerControlKind.Close => new CloseControl(),
             PlayerControlKind.Minimize => new MinimizeControl(),
             PlayerControlKind.Fullscreen => new FullscreenControl(),
             PlayerControlKind.Previous => new PreviousControl(),
-            PlayerControlKind.Rewind => new RewindControl(),
-            PlayerControlKind.FastForward => new FastForwardControl(),
             PlayerControlKind.Next => new NextControl(),
             PlayerControlKind.LoopMode => new LoopModeControl(),
+            PlayerControlKind.Settings => new SettingsControl(),
             PlayerControlKind.DebugInfo => new DebugInfoControl(),
             // 对齐分割线：本身不显示任何内容，行面板只认它的 Kind 来分区
             PlayerControlKind.Divider => null,

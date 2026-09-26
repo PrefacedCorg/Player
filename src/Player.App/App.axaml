@@ -3,9 +3,21 @@
              xmlns:sty="using:FluentAvalonia.Styling"
              x:Class="Player.App.App"
              RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <!-- 托盘菜单（ClassIsland 同款：NativeMenu 定义为资源，赋给 TrayIcon.Menu） -->
+    <NativeMenu x:Key="AppTrayMenu">
+      <NativeMenuItem Header="打开设置…" Click="OnTrayOpenSettingsClick" />
+      <NativeMenuItemSeparator />
+      <NativeMenuItem Header="显示主界面" Click="OnTrayShowMainWindowClick" />
+      <NativeMenuItem Header="退出" Click="OnTrayExitClick" />
+    </NativeMenu>
+  </Application.Resources>
   <Application.Styles>
     <!-- WinUI/Fluent 主题（FluentAvaloniaUI）：设置页用它的 FANavigationView + FASettingsExpander。
          它自带完整控件样式集，因此不再叠加 Avalonia.Themes.Fluent。 -->
     <sty:FluentAvaloniaTheme />
   </Application.Styles>
+  <!-- 托盘 TrayIcon 不能在这里定义：XamlIlPopulate 填充阶段对它的 Icon/Menu 属性赋值会 NRE
+       （ClassIsland 也是纯代码 new TrayIcon，菜单定义放 XAML Resources + 代码 FindResource 挂上，
+       见 App.axaml.cs OnFrameworkInitializationCompleted） -->
 </Application>

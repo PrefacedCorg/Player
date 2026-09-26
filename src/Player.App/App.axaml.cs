@@ -42,8 +42,67 @@ public partial class App : Application
 
             // 退出兜底：变更即保存之外，退出时再写一次盘（ClassIsland 停止流程同款）
             desktop.Exit += (_, _) => PlayerSettingsStore.Save(Settings);
+
+            // 托盘（ClassIsland TaskBarIconService 同款）：TrayIcon 在 XAML 里定义会在填充阶段
+            // 崩（Icon/Menu 属性赋值 NRE），因此纯代码创建：图标从输出目录按相对路径构造
+            //（ClassIsland 的 AppLogo 同款）；菜单在 App.axaml Resources 里定义，这里取出挂上；
+            // 退出时隐藏，避免进程结束后托盘残留一块空图标。
+            var trayIcon = new TrayIcon
+            {
+                Icon = new WindowIcon("Assets/TrayIcon.png"),
+                ToolTipText = "Player",
+                Menu = Resources["AppTrayMenu"] as NativeMenu,
+            };
+            trayIcon.Clicked += OnTrayIconClicked;
+            TrayIcon.SetIcons(this, [trayIcon]);
+            desktop.Exit += (_, _) => trayIcon.IsVisible = false;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>托盘菜单「打开设置…」：转发给主窗口（设置窗口由它管理，非模态可重复调用）。</summary>
+    private void OnTrayOpenSettingsClick(object? sender, EventArgs e) =>
+        ((ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow as MainWindow)?.OpenSettings();
+
+    /// <summary>托盘菜单「显示主界面」。</summary>
+    private void OnTrayShowMainWindowClick(object? sender, EventArgs e) => ShowMainWindow();
+
+    /// <summary>托盘菜单「退出」：与控制栏「关闭」同一路径（关主窗口，ShutdownMode 接管退出）。</summary>
+    private void OnTrayExitClick(object? sender, EventArgs e)
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return;
+        }
+
+        if (desktop.MainWindow is { } window)
+        {
+            window.Close();
+        }
+        else
+        {
+            desktop.Shutdown();
+        }
+    }
+
+    /// <summary>左键点击托盘图标：显示并激活主窗口（Windows 惯例，右键才弹菜单）。</summary>
+    private void OnTrayIconClicked(object? sender, EventArgs e) => ShowMainWindow();
+
+    /// <summary>把主窗口带回前台：最小化先还原，再 Show + Activate。</summary>
+    private void ShowMainWindow()
+    {
+        if ((ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not { } window)
+        {
+            return;
+        }
+
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Show();
+        window.Activate();
     }
 }

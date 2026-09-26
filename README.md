@@ -10,37 +10,43 @@
 - Windows x64
 - PowerShell（仅用于下载 libmpv）
 
-### 第 1 步：解压 libmpv
+### 第 1 步：准备 libmpv 并编译
 
 libmpv 不随 NuGet 分发，官方也没有单独的预编译 dll。仓库里存的是它的 7z 包
 （约 32 MB，来自 [shinchiro/mpv-winbuild-cmake](https://github.com/shinchiro/mpv-winbuild-cmake)
-的 `mpv-dev-x86_64-v3`），编译前解压出 dll 即可：
+的 `mpv-dev-x86_64-v3`），编译前需要解压出 dll。**第一次直接跑这个就行**：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/extract-libmpv.ps1
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 ```
 
-产出 `third_party\mpv\win-x64\libmpv-2.dll`（约 118 MB）。该目录写在 `.gitignore` 里，
-仓库只存 7z 不存 dll，所以换机器或清理后要重跑一次。
+它会自动完成：解压 7z → 核对 dll 哈希 → 编译。之后再跑会跳过解压、直接编译。
 
 > 需要 7z：Windows 装 7-Zip，Linux 装 `p7zip-full`。
 > `x86_64-v3` 需要 CPU 支持 AVX2；老机器改用 `x86_64` 变体。
 
-要更新这个 7z 包（手动触发 GitHub Actions 的 update-libmpv，或本地执行）：
+想拆成两步手动做也可以：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/extract-libmpv.ps1
+dotnet build
+```
+
+产出的 dll 在 `third_party\mpv\win-x64\libmpv-2.dll`（约 118 MB）。该目录写在 `.gitignore` 里，
+仓库只存 7z 不存 dll，所以换机器或清理后要重新解压一次。
+
+`libmpv-2.dll` 会在编译时自动复制到输出目录（`Player.App.csproj` 里的 `CopyToOutputDirectory`），不用手动拷。
+默认 Debug 配置，产物在 `src\Player.App\bin\Debug\net10.0\`；要 Release 就 `.\scripts\build.ps1 -Configuration Release`。
+
+**判断要不要重新解压的依据**：仓库的 `third_party\mpv\manifest.json`（7z 文件名 + dll 哈希）
+与本地的 `win-x64\manifest.local.json`（已解压完成的包名 + yes/no 状态）。两者不一致、
+或状态是 no（上次中途失败）、或 dll 不在，都会重新解压并核对哈希。
+
+要更新 7z 包（手动触发 GitHub Actions 的 update-libmpv，或本地执行）：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/fetch-libmpv.ps1 -Force
 ```
-
-### 第 2 步：编译
-
-```bash
-dotnet build
-```
-
-默认 Debug 配置，产物在 `src\Player.App\bin\Debug\net10.0\`。要 Release 就加 `-c Release`。
-
-`libmpv-2.dll` 会在编译时自动复制到输出目录（`Player.App.csproj` 里的 `CopyToOutputDirectory`），不用手动拷。
 
 ### 运行
 

@@ -1,4 +1,4 @@
-# 从入库的 7z 包里解压出 libmpv-2.dll
+﻿# 从入库的 7z 包里解压出 libmpv-2.dll
 #
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File scripts/extract-libmpv.ps1
@@ -89,3 +89,4 @@ $size = (Get-Item $target).Length
 if ($size -le $minSize) { throw "解压出的 dll 过小（$size 字节），疑似异常。" }
 
 Write-Host "完成：$target（$([math]::Round($size / 1MB, 1)) MB）"
+

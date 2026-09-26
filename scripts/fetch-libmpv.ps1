@@ -105,3 +105,10 @@ $manifest | ConvertTo-Json | Set-Content -Path $manifestPath
 Write-Host "已写入清单 $manifestPath"
 Write-Host "  7z：$($asset.name)"
 Write-Host "  dll：$($manifest.sha256)"
+
+# 本地就绪标记（build.ps1 用来判断要不要重新解压；目录被 .gitignore 忽略，不入库）。
+# fetch 刚解压并记录了哈希，直接标记就绪。
+$localManifestPath = Join-Path $PackageDir 'win-x64\manifest.local.json'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $localManifestPath) | Out-Null
+([ordered]@{ archive = $asset.name; status = 'yes' } | ConvertTo-Json) |
+    Set-Content -Path $localManifestPath

@@ -58,6 +58,16 @@ public partial class MainWindow : Window
             }
         };
 
+        // 全屏状态接线：WindowState ↔ ViewModel.IsFullscreen（控制栏「全屏」控件的按钮文本跟随它，
+        // 用户按 F11 或系统快捷键切全屏时按钮同样跟着变）
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == WindowStateProperty)
+            {
+                _viewModel.IsFullscreen = WindowState == WindowState.FullScreen;
+            }
+        };
+
         Opened += (_, _) =>
         {
             _rendererSwitchReady = true;
@@ -99,6 +109,19 @@ public partial class MainWindow : Window
 
         window.Show(this);
     }
+
+    /// <summary>关闭应用（控制栏「关闭」控件调用）。</summary>
+    public void CloseApp() => Close();
+
+    /// <summary>最小化窗口（控制栏「最小化」控件调用）。</summary>
+    public void MinimizeWindow() => WindowState = WindowState.Minimized;
+
+    /// <summary>
+    /// 进入 / 退出全屏（控制栏「全屏」控件调用）。
+    /// 状态变化经 WindowState 接线同步到 ViewModel.IsFullscreen，按钮文本随之切换。
+    /// </summary>
+    public void ToggleFullscreen() =>
+        WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen;
 
     private void ApplyRenderer(VideoRenderer renderer)
     {

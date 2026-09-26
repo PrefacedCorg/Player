@@ -168,24 +168,69 @@
 
         <!-- ROW 1 说明 -->
         <TextBlock Grid.Row="1"
-                   Text="以下控件将显示在控制栏上，从组件库拖动控件以添加控件。"
+                   Text="控制栏按行显示：拖动行的手柄调整行的上下顺序，行内拖动调整控件的左右顺序，从组件库拖动控件以添加。"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Left"
                    Margin="0 0 0 8"/>
 
-        <!-- ROW 2 控制栏布局：已放置的控件，拖动调整顺序，右键菜单同样是这些操作 -->
+        <!-- ROW 2 控制栏布局：行列表（纵向），每行 = 拖动手柄 + 行内控件横向列表 + 行操作按钮，
+             照 ClassIsland-2.0 组件设置页的多行结构。行重排只允许从手柄拖（避免与行内控件拖动打架）。 -->
         <ListBox Grid.Row="2"
-                 ItemsSource="{Binding Placed}"
-                 Classes="component-listBox"
-                 Margin="-12 0"
-                 SelectionChanged="SelectorComponents_OnSelectionChanged">
-            <ia:Interaction.Behaviors>
-                <ia:BehaviorCollection>
-                    <dnd:ManagedContextDropBehavior Handler="{Binding DropHandler}"
-                                                    Context="{Binding Placed}"/>
-                </ia:BehaviorCollection>
-            </ia:Interaction.Behaviors>
+                 ItemsSource="{Binding Lines}"
+                 Margin="-12 0">
+            <ListBox.ItemContainerTheme>
+                <ControlTheme TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="Padding" Value="0 4"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="(ia:Interaction.Behaviors)">
+                        <ia:BehaviorCollectionTemplate>
+                            <ia:BehaviorCollection>
+                                <behaviors:AdvancedItemDragBehavior Orientation="Vertical"
+                                                                   AllowDragFromDragThumbOnly="True"
+                                                                   HorizontalDragThreshold="3"
+                                                                   VerticalDragThreshold="3"/>
+                            </ia:BehaviorCollection>
+                        </ia:BehaviorCollectionTemplate>
+                    </Setter>
+                </ControlTheme>
+            </ListBox.ItemContainerTheme>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="app:PlayerControlLine">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <controls:TouchDragThumb Grid.Column="0"
+                                                 Margin="0 0 4 0"
+                                                 VerticalAlignment="Stretch"/>
+                        <ListBox Grid.Column="1"
+                                 ItemsSource="{Binding Children}"
+                                 Classes="component-listBox"
+                                 SelectionChanged="SelectorComponents_OnSelectionChanged">
+                            <ia:Interaction.Behaviors>
+                                <ia:BehaviorCollection>
+                                    <dnd:ManagedContextDropBehavior x:CompileBindings="False"
+                                                                    Handler="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.DropHandler}"
+                                                                    Context="{Binding Children}"/>
+                                </ia:BehaviorCollection>
+                            </ia:Interaction.Behaviors>
+                        </ListBox>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="4 0 0 0">
+                            <Button ToolTip.Tip="在下方插入一行"
+                                    Click="ButtonInsertLineBelow_OnClick"
+                                    Background="Transparent"
+                                    BorderThickness="0">
+                                <ui:FASymbolIcon Symbol="Add" FontSize="14"/>
+                            </Button>
+                            <Button ToolTip.Tip="删除行"
+                                    Foreground="IndianRed"
+                                    Click="ButtonRemoveLine_OnClick"
+                                    Background="Transparent"
+                                    BorderThickness="0">
+                                <ui:FASymbolIcon Symbol="Delete" FontSize="14"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
         </ListBox>
 
         <!-- ROW 3 子组件视图：查看某个容器里的控件（ClassIsland 的“此组件的子组件”面板） -->

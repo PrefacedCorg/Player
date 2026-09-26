@@ -18,9 +18,10 @@ public partial class PlayerSettings : ObservableObject
     private VideoScalingMode _scalingMode = VideoScalingMode.Fit;
 
     /// <summary>
-    /// 底部播放控制栏的布局：有序列表，元素顺序即控件在栏里的顺序，IsVisible 控制显隐。
-    /// 元素可以是容器型控件（轮播/滚动/分组/堆叠），容器里的子控件在 PlayerControlItem.Children。
-    /// 主窗口的控制栏宿主直接读这个列表递归渲染，设置页改这里即时生效。
+    /// 底部播放控制栏的布局：多行（照抄 ClassIsland-2.0 的主界面行机制），
+    /// 每行（<see cref="PlayerControlLine"/>）横向排一组控件，行从上到下排开，行可增删。
+    /// 行内元素可以是容器型控件（轮播/滚动/分组/堆叠），容器里的子控件在 PlayerControlItem.Children。
+    /// 主窗口的控制栏宿主直接读这个行列表递归渲染，设置页改这里即时生效。
     /// </summary>
-    public ObservableCollection<PlayerControlItem> ControlBar { get; } = PlayerControlCatalog.CreateDefaultLayout();
+    public ObservableCollection<PlayerControlLine> ControlBar { get; } = PlayerControlCatalog.CreateDefaultLayout();
 }

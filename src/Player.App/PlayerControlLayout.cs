@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Layout;
 using FluentAvalonia.UI.Controls;
 
 namespace Player.App;
@@ -33,6 +34,33 @@ public enum PlayerControlKind
 
     /// <summary>打开设置。</summary>
     Settings,
+
+    /// <summary>关闭应用。</summary>
+    Close,
+
+    /// <summary>最小化窗口。</summary>
+    Minimize,
+
+    /// <summary>进入/退出全屏。</summary>
+    Fullscreen,
+
+    /// <summary>播放上一个（队列导航）。</summary>
+    Previous,
+
+    /// <summary>回退（快退 10 秒）。</summary>
+    Rewind,
+
+    /// <summary>快进（快进 10 秒）。</summary>
+    FastForward,
+
+    /// <summary>播放下一个（队列导航）。</summary>
+    Next,
+
+    /// <summary>循环模式：单个循环 / 列表循环 / 单个播放 / 随机播放，点击循环切换。</summary>
+    LoopMode,
+
+    /// <summary>调试信息：播放状态、起播时序与解码/CPU 诊断（一个组件占一行）。</summary>
+    DebugInfo,
 
     /// <summary>轮播容器：定时切换显示容器里的控件。</summary>
     Slide,
@@ -102,16 +130,79 @@ public static class PlayerControlCatalog
         new(PlayerControlKind.Volume, "音量", "音量滑块与百分比，上限 200%"),
         new(PlayerControlKind.Renderer, "渲染器", "切换 Native / OpenGl / Software"),
         new(PlayerControlKind.Settings, "设置", "打开设置窗口"),
+        new(PlayerControlKind.Close, "关闭", "关闭应用"),
+        new(PlayerControlKind.Minimize, "最小化", "最小化窗口"),
+        new(PlayerControlKind.Fullscreen, "全屏", "进入 / 退出全屏"),
+        new(PlayerControlKind.Previous, "上一个", "播放队列里的上一个文件"),
+        new(PlayerControlKind.Rewind, "回退", "快退 10 秒"),
+        new(PlayerControlKind.FastForward, "快进", "快进 10 秒"),
+        new(PlayerControlKind.Next, "下一个", "播放队列里的下一个文件"),
+        new(PlayerControlKind.LoopMode, "循环模式", "循环切换：单个循环 / 列表循环 / 单个播放 / 随机播放"),
+        new(PlayerControlKind.DebugInfo, "调试信息", "播放状态、起播时序与解码/CPU 诊断"),
         new(PlayerControlKind.Slide, "轮播容器", "定时切换显示容器里的控件"),
         new(PlayerControlKind.Rolling, "滚动容器", "容器里的控件横向滚动显示"),
         new(PlayerControlKind.Group, "分组容器", "把容器里的控件横向排成一组"),
         new(PlayerControlKind.Stack, "堆叠容器", "把容器里的控件叠放在一起"),
     ];
 
-    /// <summary>默认布局：全部普通控件按默认顺序放进控制栏（容器需要手动拖进去）。</summary>
-    public static ObservableCollection<PlayerControlItem> CreateDefaultLayout() =>
-        new(All.Where(static entry => !entry.IsContainer)
-            .Select(static entry => new PlayerControlItem(entry.Kind, entry.Title)));
+    /// <summary>
+    /// 默认布局（三行，照 ClassIsland-2.0 主界面多行的结构）：
+    /// 第一行进度条独占；第二行分左右中三栏（三个分组容器，对齐方式走分组容器
+    /// 高级设置里的「对齐方式」）；第三行调试信息算一个组件占一行。
+    /// </summary>
+    public static ObservableCollection<PlayerControlLine> CreateDefaultLayout()
+    {
+        // 第一行：进度条独占
+        var positionLine = new PlayerControlLine();
+        positionLine.Children.Add(Item(PlayerControlKind.Position));
+
+        // 第二行：居左 关闭/最小化/全屏 · 居中 上一个/回退/播放暂停/快进/下一个（左右对称，
+        // 行面板的整行居中让播放/暂停正好在整行正中间）· 居右 音量/渲染器/循环模式/设置
+        var buttonsLine = new PlayerControlLine();
+        buttonsLine.Children.Add(Group(HorizontalAlignment.Left,
+            Item(PlayerControlKind.Close),
+            Item(PlayerControlKind.Minimize),
+            Item(PlayerControlKind.Fullscreen)));
+        buttonsLine.Children.Add(Group(HorizontalAlignment.Center,
+            Item(PlayerControlKind.Previous),
+            Item(PlayerControlKind.Rewind),
+            Item(PlayerControlKind.PlayPause),
+            Item(PlayerControlKind.FastForward),
+            Item(PlayerControlKind.Next)));
+        buttonsLine.Children.Add(Group(HorizontalAlignment.Right,
+            Item(PlayerControlKind.Volume),
+            Item(PlayerControlKind.Renderer),
+            Item(PlayerControlKind.LoopMode),
+            Item(PlayerControlKind.Settings)));
+
+        // 第三行：调试信息（状态 + 起播时序 + 解码诊断，算一个组件也就是一行）
+        var debugLine = new PlayerControlLine();
+        debugLine.Children.Add(Item(PlayerControlKind.DebugInfo));
+
+        return
+        [
+            positionLine,
+            buttonsLine,
+            debugLine,
+        ];
+    }
+
+    /// <summary>按种类创建一个控件项（默认布局用，标题取组件库条目）。</summary>
+    private static PlayerControlItem Item(PlayerControlKind kind) =>
+        new(kind, All.First(entry => entry.Kind == kind).Title);
+
+    /// <summary>创建一个分组容器并把控件装进去（默认布局用，对齐方式直接写进高级设置里的对齐属性）。</summary>
+    private static PlayerControlItem Group(HorizontalAlignment alignment, params PlayerControlItem[] children)
+    {
+        var group = new PlayerControlItem(PlayerControlKind.Group, "分组容器");
+        group.Settings.HorizontalAlignment = alignment;
+        foreach (var child in children)
+        {
+            group.Children!.Add(child);
+        }
+
+        return group;
+    }
 
     /// <summary>控件种类 → 图标（FluentAvalonia 内置符号字体，无需外部图标资源）。</summary>
     public static FASymbol SymbolFor(PlayerControlKind kind) => kind switch
@@ -125,6 +216,15 @@ public static class PlayerControlCatalog
         PlayerControlKind.Volume => FASymbol.Volume,
         PlayerControlKind.Renderer => FASymbol.Video,
         PlayerControlKind.Settings => FASymbol.Settings,
+        PlayerControlKind.Close => FASymbol.Cancel,
+        PlayerControlKind.Minimize => FASymbol.ChevronDown,
+        PlayerControlKind.Fullscreen => FASymbol.FullScreen,
+        PlayerControlKind.Previous => FASymbol.Previous,
+        PlayerControlKind.Rewind => FASymbol.Back,
+        PlayerControlKind.FastForward => FASymbol.Forward,
+        PlayerControlKind.Next => FASymbol.Next,
+        PlayerControlKind.LoopMode => FASymbol.RepeatAll,
+        PlayerControlKind.DebugInfo => FASymbol.Code,
         PlayerControlKind.Slide => FASymbol.SlideShow,
         PlayerControlKind.Rolling => FASymbol.Sync,
         PlayerControlKind.Group => FASymbol.AllApps,

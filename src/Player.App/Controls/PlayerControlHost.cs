@@ -96,7 +96,15 @@ public class PlayerControlHost : Border
         Margin = settings.IsCustomMarginEnabled
             ? new Thickness(settings.MarginLeft, settings.MarginTop, settings.MarginRight, settings.MarginBottom)
             : default;
-        HorizontalAlignment = settings.HorizontalAlignment;
+
+        // 对齐方式参与行面板的整行排布（居左/居中/居右/拉伸分组）：改它除了改自身，
+        // 还要让父面板重新测量——Avalonia 的对齐属性只影响自身排列，不会触发父面板
+        // 重新 Arrange，行面板不重排的话对齐怎么调都不动。
+        if (HorizontalAlignment != settings.HorizontalAlignment)
+        {
+            HorizontalAlignment = settings.HorizontalAlignment;
+            InvalidateMeasure();
+        }
 
         SecondaryFontSize = settings.SecondaryFontSize;
         BodyFontSize = settings.BodyFontSize;

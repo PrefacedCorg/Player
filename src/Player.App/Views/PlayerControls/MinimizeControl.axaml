@@ -1,0 +1,6 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Player.App.Views.PlayerControls.MinimizeControl">
+
+  <Button Content="最小化" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
+</UserControl>

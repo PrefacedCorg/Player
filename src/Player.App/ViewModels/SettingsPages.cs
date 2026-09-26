@@ -95,25 +95,26 @@ public sealed record VideoScalingOption(VideoScalingMode Mode, string Title, str
 
 /// <summary>
 /// 控制栏。控件本身是组件化的（一个控件一个文件，见 Views/PlayerControls），
-/// 这里管"哪些控件放在栏里、按什么顺序、容器里放什么"：可以像 ClassIsland 那样把控件包裹进容器、
-/// 把控件移进/移出容器、逐层查看容器里的子控件，改动由主窗口立即重建生效。
+/// 这里管"控制栏里有几行、每行放哪些控件、按什么顺序、容器里放什么"（照抄 ClassIsland-2.0
+/// 的主界面多行结构）：可以加行/删行、把控件包裹进容器、把控件移进/移出容器、
+/// 逐层查看容器里的子控件，改动由主窗口立即重建生效。
 /// </summary>
 public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 {
     private readonly Stack<PlayerControlItem> _navigationStack = new();
 
     public ControlBarSettingsViewModel(PlayerSettings settings)
-        : base("控制栏", "拖动调整控制栏里的控件与顺序", FASymbol.Repair)
+        : base("控制栏", "拖动调整控制栏里的行与控件", FASymbol.Repair)
     {
-        Placed = settings.ControlBar;
+        Lines = settings.ControlBar;
         DropHandler = new ControlBarDropHandler(this);
     }
 
     /// <summary>拖放处理器：拖动源的落点都交给它（与 ClassIsland 一样挂在 ViewModel 上）。</summary>
     public ControlBarDropHandler DropHandler { get; }
 
-    /// <summary>控制栏根列表：顺序就是控制栏里的左右顺序。</summary>
-    public ObservableCollection<PlayerControlItem> Placed { get; }
+    /// <summary>控制栏行列表：顺序就是控制栏里的上下顺序，每行里的控件横向排列。</summary>
+    public ObservableCollection<PlayerControlLine> Lines { get; }
 
     /// <summary>当前打开的容器里的子控件列表（未打开子组件视图时为 null）。</summary>
     [ObservableProperty]
@@ -284,7 +285,7 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
         SelectedItem = item;
     }
 
-    /// <summary>右键菜单"从容器组件移出"：把当前容器里的控件放回控制栏。</summary>
+    /// <summary>右键菜单"从容器组件移出"：把控件放回容器所在的层级（与容器同级，加在列表末尾）。</summary>
     public void MoveOutOfCurrentContainer(PlayerControlItem item)
     {
         if (CurrentContainer?.Children is not { } children || !children.Remove(item))
@@ -292,7 +293,20 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
             return;
         }
 
-        Placed.Add(item);
+        // 容器在哪个列表里，控件就放回那个列表（行或更外层的容器）
+        var list = FindOwnerList(CurrentContainer);
+        if (list is not null)
+        {
+            list.Add(item);
+        }
+        else
+        {
+            // 容器自己已经不在布局树里（外层被删了）：新建一行接住，控件不丢
+            var line = new PlayerControlLine();
+            line.Children.Add(item);
+            Lines.Add(line);
+        }
+
         SelectedItem = item;
     }
 
@@ -310,17 +324,71 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 
     #endregion
 
-    #region 树查找
+    #region 行操作
 
-    /// <summary>找到控件所在的列表（控制栏根列表或某个容器的子控件列表）。</summary>
-    public ObservableCollection<PlayerControlItem>? FindOwnerList(PlayerControlItem item)
+    /// <summary>行上的"在下方插入一行"按钮（null 或找不到时加到最后）。</summary>
+    public void AddLine(PlayerControlLine? after)
     {
-        if (Placed.Contains(item))
+        var index = after is null ? -1 : Lines.IndexOf(after);
+        if (index < 0)
         {
-            return Placed;
+            Lines.Add(new PlayerControlLine());
+        }
+        else
+        {
+            Lines.Insert(index + 1, new PlayerControlLine());
+        }
+    }
+
+    /// <summary>行上的"删除行"按钮：行里的控件随之移除（ClassIsland 的删除行同款）。</summary>
+    public void RemoveLine(PlayerControlLine line)
+    {
+        // 删除前先退掉与这行相关的打开层级，避免停留在已失效的容器里
+        if (CurrentContainer is not null && !IsInTree(CurrentContainer))
+        {
+            CloseChildrenView();
         }
 
-        return FindOwnerListIn(Placed, item);
+        Lines.Remove(line);
+    }
+
+    /// <summary>右键菜单"向上移动一行"。</summary>
+    public void MoveLinePrevious(PlayerControlLine line) => MoveLineBy(line, -1);
+
+    /// <summary>右键菜单"向下移动一行"。</summary>
+    public void MoveLineNext(PlayerControlLine line) => MoveLineBy(line, 1);
+
+    private void MoveLineBy(PlayerControlLine line, int offset)
+    {
+        var from = Lines.IndexOf(line);
+        var to = from + offset;
+        if (from >= 0 && to >= 0 && to < Lines.Count)
+        {
+            Lines.Move(from, to);
+        }
+    }
+
+    #endregion
+
+    #region 树查找
+
+    /// <summary>找到控件所在的列表（某一行的控件列表或某个容器的子控件列表）。</summary>
+    public ObservableCollection<PlayerControlItem>? FindOwnerList(PlayerControlItem item)
+    {
+        foreach (var line in Lines)
+        {
+            if (line.Children.Contains(item))
+            {
+                return line.Children;
+            }
+
+            if (FindOwnerListIn(line.Children, item) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static ObservableCollection<PlayerControlItem>? FindOwnerListIn(
@@ -347,10 +415,18 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
         return null;
     }
 
-    /// <summary>找到某个控件列表所属的容器（控制栏根列表返回 null）。</summary>
+    /// <summary>找到某个控件列表所属的容器（行的控件列表不属于任何容器，返回 null）。</summary>
     public PlayerControlItem? FindOwnerContainer(ObservableCollection<PlayerControlItem> list)
     {
-        return ReferenceEquals(list, Placed) ? null : FindOwnerContainerIn(Placed, list);
+        foreach (var line in Lines)
+        {
+            if (FindOwnerContainerIn(line.Children, list) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>落点是否合法：不能把控件拖进它自己或它自己的子级里。</summary>
@@ -390,7 +466,7 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 
     /// <summary>控件（含它的子级）是否还在控制栏布局树里。</summary>
     private bool IsInTree(PlayerControlItem item) =>
-        IsInTreeIn(Placed, item);
+        Lines.Any(line => IsInTreeIn(line.Children, item));
 
     private static bool IsInTreeIn(IEnumerable<PlayerControlItem> items, PlayerControlItem target)
     {

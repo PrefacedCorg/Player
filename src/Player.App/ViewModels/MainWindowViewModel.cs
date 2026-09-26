@@ -44,6 +44,12 @@ public partial class MainWindowViewModel : ObservableObject
     private TimeSpan _seekTarget;
     private DateTime _seekGraceUntil = DateTime.MinValue;
 
+    /// <summary>C# 侧播放队列（不依赖 mpv 内部播放列表：循环/随机的决策在 UI 侧完成）。</summary>
+    private readonly List<MediaItem> _queue = [];
+
+    /// <summary>当前播放项在 <see cref="_queue"/> 里的下标；-1 = 没有在播任何队列项。</summary>
+    private int _queueIndex = -1;
+
     [ObservableProperty]
     private MpvContext? _mpv;
 
@@ -81,6 +87,20 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _mediaTitle;
+
+    /// <summary>循环模式（控制栏「循环模式」按钮循环切换：单个循环 → 列表循环 → 单个播放 → 随机播放）。</summary>
+    [ObservableProperty]
+    private PlaybackLoopMode _loopMode = PlaybackLoopMode.ListLoop;
+
+    [ObservableProperty]
+    private string _loopModeText = "列表循环";
+
+    /// <summary>是否处于全屏。由主窗口的 WindowState 同步过来，控件按钮文本跟随它。</summary>
+    [ObservableProperty]
+    private bool _isFullscreen;
+
+    [ObservableProperty]
+    private string _fullscreenText = "全屏";
 
     /// <summary>控制条是否可见。视频区点击可切换（大屏手势：点画面呼出/收起控制层）。</summary>
     [ObservableProperty]
@@ -172,8 +192,48 @@ public partial class MainWindowViewModel : ObservableObject
     private void Stop()
     {
         _engine?.Stop();
+        _queue.Clear();
+        _queueIndex = -1;
         MediaTitle = null;
         SyncRuleContext(false, true, null);
+    }
+
+    /// <summary>播放上一个：一律后退一项并回绕（队头退到队尾）。</summary>
+    [RelayCommand]
+    private void Previous()
+    {
+        if (_queue.Count == 0)
+        {
+            return;
+        }
+
+        _queueIndex = _queueIndex <= 0 ? _queue.Count - 1 : _queueIndex - 1;
+        PlayCurrent();
+    }
+
+    /// <summary>播放下一个（用户点击）：一律前进一项并回绕。</summary>
+    [RelayCommand]
+    private void Next() => NavigateNext(byUser: true);
+
+    /// <summary>回退（快退 10 秒）。</summary>
+    [RelayCommand]
+    private void SeekBackward() => SeekRelative(-10d);
+
+    /// <summary>快进（快进 10 秒）。</summary>
+    [RelayCommand]
+    private void SeekForward() => SeekRelative(10d);
+
+    /// <summary>循环模式：点击循环切换 单个循环 → 列表循环 → 单个播放 → 随机播放。</summary>
+    [RelayCommand]
+    private void CycleLoopMode()
+    {
+        LoopMode = LoopMode switch
+        {
+            PlaybackLoopMode.SingleLoop => PlaybackLoopMode.ListLoop,
+            PlaybackLoopMode.ListLoop => PlaybackLoopMode.SinglePlay,
+            PlaybackLoopMode.SinglePlay => PlaybackLoopMode.RandomPlay,
+            _ => PlaybackLoopMode.SingleLoop,
+        };
     }
 
     /// <summary>
@@ -192,7 +252,10 @@ public partial class MainWindowViewModel : ObservableObject
         OpenFiles(_startupFiles);
     }
 
-    /// <summary>打开一组文件：第一个立即播放，其余追加到播放队列（拖入多个文件时连续播放）。</summary>
+    /// <summary>
+    /// 打开一组文件：替换整个播放队列，第一个立即播放，其余留在队列里等播完接续
+    /// （队列与循环/随机决策都在 C# 侧，见 <see cref="OnPlaybackEnded"/>）。
+    /// </summary>
     public void OpenFiles(IReadOnlyList<string> paths)
     {
         if (paths.Count == 0)
@@ -200,24 +263,19 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        OpenFile(paths[0]);
-
-        if (paths.Count == 1 || _engine is null)
-        {
-            return;
-        }
-
-        var queued = 0;
-        for (var i = 1; i < paths.Count; i++)
+        _queue.Clear();
+        foreach (var path in paths)
         {
             // 与 OpenFile 一致：扩展名未知也交给 mpv 尝试
-            _engine.Enqueue(MediaItem.FromPath(paths[i]));
-            queued++;
+            _queue.Add(MediaItem.FromPath(path));
         }
 
-        if (queued > 0)
+        _queueIndex = 0;
+        OpenFile(_queue[0].Path);
+
+        if (_queue.Count > 1)
         {
-            StatusText = $"{StatusText} · 已入队 {queued} 个";
+            StatusText = $"{StatusText} · 队列 {_queue.Count} 个";
         }
     }
 
@@ -253,6 +311,100 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _engine.Volume = value;
         }
+    }
+
+    /// <summary>
+    /// 循环模式变化：同步按钮文本，并把「单个循环」下发为 mpv 的 loop-file——
+    /// 开启时当前文件播完由 mpv 自动从头继续（不会触发 <see cref="OnPlaybackEnded"/>），
+    /// 其余模式关掉 loop-file，播完后由 <see cref="NavigateNext"/> 决定下一步。
+    /// </summary>
+    partial void OnLoopModeChanged(PlaybackLoopMode value)
+    {
+        LoopModeText = value switch
+        {
+            PlaybackLoopMode.SingleLoop => "单个循环",
+            PlaybackLoopMode.ListLoop => "列表循环",
+            PlaybackLoopMode.SinglePlay => "单个播放",
+            _ => "随机播放",
+        };
+
+        if (_engine is not null)
+        {
+            _engine.LoopFile = value == PlaybackLoopMode.SingleLoop;
+        }
+    }
+
+    partial void OnIsFullscreenChanged(bool value) => FullscreenText = value ? "退出全屏" : "全屏";
+
+    /// <summary>
+    /// 引擎回报「当前文件播完」（轮询线程上来，切回 UI 线程）：
+    /// 按循环模式决定下一步。单个循环开启时 mpv 自己从头继续，不会走到这里。
+    /// </summary>
+    private void OnPlaybackEnded(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(() => NavigateNext(byUser: false));
+
+    /// <summary>
+    /// 队列导航：byUser = 用户点了「下一个」按钮，一律前进一项并回绕；
+    /// 自然播完时按循环模式决策——列表循环回绕到队头、单个播放停止、随机播放跳到一个不等于当前项的随机项。
+    /// </summary>
+    private void NavigateNext(bool byUser)
+    {
+        if (_queue.Count == 0)
+        {
+            return;
+        }
+
+        if (!byUser && LoopMode == PlaybackLoopMode.SinglePlay)
+        {
+            Stop();
+            return;
+        }
+
+        if (!byUser && LoopMode == PlaybackLoopMode.RandomPlay && _queue.Count > 1)
+        {
+            // 随机但不重复当前项（只剩一项时没有别的可跳，重播当前项即可）
+            var next = _queueIndex;
+            while (next == _queueIndex)
+            {
+                next = Random.Shared.Next(_queue.Count);
+            }
+
+            _queueIndex = next;
+        }
+        else
+        {
+            _queueIndex = (_queueIndex + 1) % _queue.Count;
+        }
+
+        PlayCurrent();
+    }
+
+    /// <summary>播放队列里当前下标指向的文件。</summary>
+    private void PlayCurrent()
+    {
+        if (_queueIndex >= 0 && _queueIndex < _queue.Count)
+        {
+            OpenFile(_queue[_queueIndex].Path);
+        }
+    }
+
+    /// <summary>
+    /// 相对当前播放位置快进/快退（秒）。与进度条拖动一样设置回弹宽限期，
+    /// 并立即刷新位置与时间显示——mpv 生效前的轮询还报旧位置，不先改界面就会来回跳。
+    /// </summary>
+    private void SeekRelative(double deltaSeconds)
+    {
+        if (_engine is null)
+        {
+            return;
+        }
+
+        var target = TimeSpan.FromSeconds(Math.Clamp(PositionSeconds + deltaSeconds, 0d, DurationSeconds));
+        _seekTarget = target;
+        _seekGraceUntil = DateTime.UtcNow.AddMilliseconds(800);
+        _engine.Seek(target);
+        PositionSeconds = target.TotalSeconds;
+        TimeText = $"{Format(target)} / {Format(TimeSpan.FromSeconds(DurationSeconds))}";
     }
 
     /// <summary>拖动期间时间显示跟随手指，而不是跟着播放位置。</summary>
@@ -336,8 +488,10 @@ public partial class MainWindowViewModel : ObservableObject
             var engine = new MpvMediaEngine(context);
             engine.StateChanged += OnEngineStateChanged;
             engine.DecoderReady += OnDecoderReady;
+            engine.PlaybackEnded += OnPlaybackEnded;
             engine.Volume = Volume;
             engine.ScalingMode = _settings.ScalingMode;
+            engine.LoopFile = LoopMode == PlaybackLoopMode.SingleLoop;
             _engine = engine;
 
             _mpvReadyMs = (long)StartupTrace.ElapsedMs;

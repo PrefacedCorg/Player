@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using Player.App.ViewModels;
 
@@ -22,6 +23,14 @@ public partial class ControlBarSettingsPage : UserControl
 
     [RelayCommand]
     private void MoveNext(PlayerControlItem? item) => ViewModel?.MoveNext(item!);
+
+    /// <summary>右键菜单"向上移动一行"（行 ListBox 上的命令入口）。</summary>
+    [RelayCommand]
+    private void MoveLineUp(PlayerControlLine? line) => ViewModel?.MoveLinePrevious(line!);
+
+    /// <summary>右键菜单"向下移动一行"。</summary>
+    [RelayCommand]
+    private void MoveLineDown(PlayerControlLine? line) => ViewModel?.MoveLineNext(line!);
 
     [RelayCommand]
     private void Duplicate(PlayerControlItem? item) => ViewModel?.Duplicate(item!);
@@ -53,12 +62,32 @@ public partial class ControlBarSettingsPage : UserControl
         }
     }
 
-    /// <summary>两个列表（控制栏 / 容器子控件）共用：把选中的控件交给 ViewModel，供右侧两个标签页使用。</summary>
+    /// <summary>
+    /// 所有控件列表（每行一个 + 子组件视图）共用：把选中的控件交给 ViewModel，供右侧两个标签页使用。
+    /// <para>
+    /// 只响应"选中了某项"，取消选择不传播：往下滚动页面时行容器会被回收、行内的列表随之卸载并
+    /// 清空选择，那种取消不能动 ViewModel——否则高级设置标签页会跟着消失（分组内的控件不受影响，
+    /// 因为它们显示在行模板之外的子组件视图列表里）。
+    /// </para>
+    /// </summary>
     private void SelectorComponents_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (ViewModel is { } viewModel && sender is ListBox listBox)
+        if (ViewModel is not { } viewModel
+            || sender is not ListBox listBox
+            || listBox.SelectedItem is not PlayerControlItem item)
         {
-            viewModel.SelectedItem = listBox.SelectedItem as PlayerControlItem;
+            return;
+        }
+
+        viewModel.SelectedItem = item;
+
+        // 每行是独立的列表、子组件视图又是一个：清掉其它列表里的高亮，避免多行同时有选中项。
+        // 被清的列表会以 SelectedItem=null 再进来一次，直接被上面的判空挡住，不会递归。
+        foreach (var other in this.GetVisualDescendants().OfType<ListBox>()
+                     .Where(static l => l.Classes.Contains("component-listBox"))
+                     .Where(l => !ReferenceEquals(l, listBox)))
+        {
+            other.SelectedItem = null;
         }
     }
 
@@ -74,6 +103,24 @@ public partial class ControlBarSettingsPage : UserControl
         if (sender is Control { DataContext: PlayerControlItem item })
         {
             ViewModel?.Remove(item);
+        }
+    }
+
+    /// <summary>行上的"在下方插入一行"按钮。</summary>
+    private void ButtonInsertLineBelow_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: PlayerControlLine line })
+        {
+            ViewModel?.AddLine(line);
+        }
+    }
+
+    /// <summary>行上的"删除行"按钮。</summary>
+    private void ButtonRemoveLine_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: PlayerControlLine line })
+        {
+            ViewModel?.RemoveLine(line);
         }
     }
 }

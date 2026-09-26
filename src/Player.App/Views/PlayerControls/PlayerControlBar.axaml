@@ -4,7 +4,8 @@
              x:Class="Player.App.Views.PlayerControls.PlayerControlBar"
              x:DataType="vm:MainWindowViewModel">
 
-  <!-- 控制栏宿主：控件不写死在这里，而是按设置里的有序列表生成（见 PlayerControlBar.axaml.cs）。
+  <!-- 控制栏宿主：控件不写死在这里，而是按设置里的行列表生成（见 PlayerControlBar.axaml.cs）。
+       根是纵向面板，每行一个行面板（居左靠行首、居中是整行居中、居右靠行尾、拉伸占满整行）。
        每个控件是 Views/PlayerControls 下的独立 UserControl，DataContext 由视觉树继承（= 主窗口 VM）。 -->
-  <Grid x:Name="Root" ColumnSpacing="16" />
+  <StackPanel x:Name="Root" Orientation="Vertical" Spacing="8" />
 </UserControl>

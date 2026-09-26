@@ -28,6 +28,7 @@ public sealed class MpvMediaEngine : IMediaEngine
     private MediaEngineState _state = MediaEngineState.Empty;
     private bool _videoDecoderReady;
     private string? _videoDecoderSummary;
+    private bool _eofReached;
     private bool _disposed;
 
     /// <summary>当前缩放方式（"原始大小"模式才允许平移）。</summary>
@@ -53,6 +54,8 @@ public sealed class MpvMediaEngine : IMediaEngine
     public event EventHandler<MediaEngineState>? StateChanged;
 
     public event EventHandler<MediaKind>? DecoderReady;
+
+    public event EventHandler? PlaybackEnded;
 
     public MediaEngineState State => _state;
 
@@ -218,11 +221,13 @@ public sealed class MpvMediaEngine : IMediaEngine
 
     public void Play() => SetPaused(false);
 
-    public void Enqueue(MediaItem item)
+    /// <summary>
+    /// 单个循环开关：mpv 的 loop-file 是运行期属性，播放中切换立即生效，
+    /// 开启时当前文件播完由 mpv 自动从头继续（不会触发 <see cref="PlaybackEnded"/>）。
+    /// </summary>
+    public bool LoopFile
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        // append=true, appendPlay=false：追加到 mpv 内部队列且不打断当前播放
-        Safe(() => _mpv.LoadFile(item.Path, true, false, null).Invoke());
+        set => Safe(() => _mpv.SetPropertyString("loop-file", value ? "inf" : "no"));
     }
 
     public void Pause() => SetPaused(true);
@@ -415,6 +420,15 @@ public sealed class MpvMediaEngine : IMediaEngine
             var position = Safe(() => _mpv.PlaybackTime.Get(), (double?)null) ?? 0d;
             var duration = Safe(() => _mpv.Duration.Get(), (double?)null) ?? 0d;
             var title = Safe(() => _mpv.GetPropertyString("media-title"), string.Empty);
+
+            // 播放结束检测：eof-reached 上升沿触发一次（单个循环开启时 mpv 自己从头继续，永远到不了 eof）
+            var eof = Safe(() => _mpv.GetProperty<bool?>("eof-reached"), (bool?)null) ?? false;
+            if (eof && !_eofReached)
+            {
+                PlaybackEnded?.Invoke(this, EventArgs.Empty);
+            }
+
+            _eofReached = eof;
 
             var next = new MediaEngineState(
                 paused,

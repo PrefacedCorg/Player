@@ -21,23 +21,11 @@
                  MpvContext="{Binding Mpv}" />
 
     <Border Grid.Row="1" Background="#1B1B22" IsVisible="{Binding IsControlBarVisible}">
-      <Grid RowDefinitions="Auto,Auto,Auto">
-
-        <!-- 控制行：控件全部组件化（Views/PlayerControls 下一个控件一个文件），
-             这里只放宿主，具体放哪些控件、按什么顺序由设置里的有序列表决定，
-             可在 设置 → 控制栏 里勾选显隐与调整顺序，改完立即重建。 -->
-        <pc:PlayerControlBar Grid.Row="0" />
-
-        <!-- 状态与起播时序 -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="20">
-          <TextBlock Text="{Binding StatusText}" Foreground="#F0F0F0" FontSize="14" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding TimingText}" Foreground="#7CF7B0" FontSize="14" VerticalAlignment="Center" />
-          <TextBlock Text="{Binding MediaTitle}" Foreground="#A8A8B0" FontSize="14" VerticalAlignment="Center" />
-        </StackPanel>
-
-        <!-- 解码 / CPU 诊断 -->
-        <TextBlock Grid.Row="2" Text="{Binding DebugText}" Foreground="#B9C0FF" FontSize="13" />
-      </Grid>
+      <!-- 控制行：控件全部组件化（Views/PlayerControls 下一个控件一个文件），行结构照 ClassIsland-2.0
+           的主界面多行机制。这里只放宿主，控制栏里有几行、每行放哪些控件、按什么顺序由设置里的
+           行列表决定，可在 设置 → 控制栏 里加删行、调整顺序，改完立即重建。
+           状态 / 时序 / 调试信息也走组件（调试信息控件），不再写死在主窗口里。 -->
+      <pc:PlayerControlBar />
     </Border>
   </Grid>
 </Window>

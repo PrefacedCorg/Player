@@ -3,20 +3,28 @@ using System.Collections.Specialized;
 namespace Player.App;
 
 /// <summary>
-/// 控制栏布局监视器：递归订阅控件列表与各级容器的子控件列表，任何一层增删子控件时触发重建。
+/// 控制栏布局监视器：订阅行列表、每行的控件列表与各级容器的子控件列表，
+/// 任何一层增删（加行、删行、行内加删控件、容器里加删子控件）时触发重建。
 /// 重建前先整体退订，避免重建过程中集合变化引发的重入。
 /// </summary>
 public sealed class ControlBarLayoutWatcher(Action onChanged)
 {
     private readonly List<INotifyCollectionChanged> _tracked = [];
 
-    /// <summary>订阅一棵布局树（含各级容器的子控件列表）。</summary>
-    public void Track(IEnumerable<PlayerControlItem> items)
+    /// <summary>订阅整棵布局树：行集合 → 每行的控件列表 → 各级容器的子控件列表。</summary>
+    public void Track(System.Collections.ObjectModel.ObservableCollection<PlayerControlLine> lines)
     {
         Untrack();
-        foreach (var item in items)
+        lines.CollectionChanged += OnCollectionChanged;
+        _tracked.Add(lines);
+        foreach (var line in lines)
         {
-            TrackItem(item);
+            line.Children.CollectionChanged += OnCollectionChanged;
+            _tracked.Add(line.Children);
+            foreach (var item in line.Children)
+            {
+                TrackItem(item);
+            }
         }
     }
 

@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Player.App.ViewModels"
+             x:Class="Player.App.Views.PlayerControls.DebugInfoControl"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- 原 MainWindow 的状态行 + 调试行合并成一个组件：第一行 播放状态 · 起播时序 · 媒体标题，
+       第二行 解码 / CPU 诊断。用户在设置里把这两行当「调试信息」一个组件摆一行。 -->
+  <StackPanel Orientation="Vertical" Spacing="4">
+    <StackPanel Orientation="Horizontal" Spacing="20">
+      <TextBlock Text="{Binding StatusText}" Foreground="#F0F0F0" FontSize="14" VerticalAlignment="Center" />
+      <TextBlock Text="{Binding TimingText}" Foreground="#7CF7B0" FontSize="14" VerticalAlignment="Center" />
+      <TextBlock Text="{Binding MediaTitle}" Foreground="#A8A8B0" FontSize="14" VerticalAlignment="Center" />
+    </StackPanel>
+    <TextBlock Text="{Binding DebugText}" Foreground="#B9C0FF" FontSize="13" />
+  </StackPanel>
+</UserControl>

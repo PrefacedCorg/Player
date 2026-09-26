@@ -44,6 +44,15 @@ public static class PlayerControlFactory
             PlayerControlKind.Volume => new VolumeControl(),
             PlayerControlKind.Renderer => new RendererControl(),
             PlayerControlKind.Settings => new SettingsControl(),
+            PlayerControlKind.Close => new CloseControl(),
+            PlayerControlKind.Minimize => new MinimizeControl(),
+            PlayerControlKind.Fullscreen => new FullscreenControl(),
+            PlayerControlKind.Previous => new PreviousControl(),
+            PlayerControlKind.Rewind => new RewindControl(),
+            PlayerControlKind.FastForward => new FastForwardControl(),
+            PlayerControlKind.Next => new NextControl(),
+            PlayerControlKind.LoopMode => new LoopModeControl(),
+            PlayerControlKind.DebugInfo => new DebugInfoControl(),
             _ => null,
         };
 

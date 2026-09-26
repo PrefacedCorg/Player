@@ -1,24 +1,24 @@
-# ±¾µØ¹¹½¨Èë¿Ú£ºÈ·±£ libmpv ¾ÍĞ÷ºó±àÒë
+ï»¿# æœ¬åœ°æ„å»ºå…¥å£ï¼šç¡®ä¿ libmpv å°±ç»ªåç¼–è¯‘
 #
-# Á½·İÇåµ¥£º
-#   third_party/mpv/manifest.json                  Èë¿â£¬ÓÉ update-libmpv ¹¤×÷Á÷ /
-#                                                  fetch-libmpv.ps1 Î¬»¤£¬¼ÇÂ¼µ±Ç°
-#                                                  7z ÎÄ¼şÃûÓëËüÓ¦½â³öµÄ dll ¹şÏ£
-#   third_party/mpv/win-x64/manifest.local.json    ´¿±¾µØ£¨Ä¿Â¼±» .gitignore ºöÂÔ£©£¬
-#                                                  ¼ÇÂ¼¡¸ÄÄ¸ö 7z ÒÑÔÚ±¾»ú½âÑ¹Ğ£ÑéÍê³É¡¹
-#                                                  Óë yes/no ×´Ì¬
+# ä¸¤ä»½æ¸…å•ï¼š
+#   third_party/mpv/manifest.json                  å…¥åº“ï¼Œç”± update-libmpv å·¥ä½œæµ /
+#                                                  fetch-libmpv.ps1 ç»´æŠ¤ï¼Œè®°å½•å½“å‰
+#                                                  7z æ–‡ä»¶åä¸å®ƒåº”è§£å‡ºçš„ dll å“ˆå¸Œ
+#   third_party/mpv/win-x64/manifest.local.json    çº¯æœ¬åœ°ï¼ˆç›®å½•è¢« .gitignore å¿½ç•¥ï¼‰ï¼Œ
+#                                                  è®°å½•ã€Œå“ªä¸ª 7z å·²åœ¨æœ¬æœºè§£å‹æ ¡éªŒå®Œæˆã€
+#                                                  ä¸ yes/no çŠ¶æ€
 #
-# ÅĞ¶¨£¨¶ÔÕÕÁ½·İÇåµ¥£©£º
-#   ±¾µØÇåµ¥²»´æÔÚ£¨Ê×´ÎÔËĞĞ£©        ¡ú ½âÑ¹ ¡ú ºË¶Ô dll ¹şÏ£ ¡ú ´´½¨±¾µØÇåµ¥£¨yes£©
-#   ±¾µØ×´Ì¬ÊÇ no£¨ÉÏ´ÎÖĞÍ¾Ê§°Ü£©      ¡ú Í¬ÉÏ£¬ÖØ×ßÒ»±é
-#   ±¾µØ archive ¡Ù ²Ö¿â archive       ¡ú ÏÈÂäÅÌ¡¸ĞÂÎÄ¼şÃû + no¡¹¡ú ½âÑ¹ ¡ú ºË¶Ô ¡ú ¸Ä»Ø yes
-#   archive Ò»ÖÂµ« dll ±»ÇåÀí¹ı        ¡ú ½âÑ¹ ¡ú ºË¶Ô ¡ú yes
-#   archive Ò»ÖÂ¡¢×´Ì¬ yes¡¢dll ÔÚ     ¡ú Ìø¹ı½âÑ¹£¬Ö±½Ó±àÒë
+# åˆ¤å®šï¼ˆå¯¹ç…§ä¸¤ä»½æ¸…å•ï¼‰ï¼š
+#   æœ¬åœ°æ¸…å•ä¸å­˜åœ¨ï¼ˆé¦–æ¬¡è¿è¡Œï¼‰        â†’ è§£å‹ â†’ æ ¸å¯¹ dll å“ˆå¸Œ â†’ åˆ›å»ºæœ¬åœ°æ¸…å•ï¼ˆyesï¼‰
+#   æœ¬åœ°çŠ¶æ€æ˜¯ noï¼ˆä¸Šæ¬¡ä¸­é€”å¤±è´¥ï¼‰      â†’ åŒä¸Šï¼Œé‡èµ°ä¸€é
+#   æœ¬åœ° archive â‰  ä»“åº“ archive       â†’ å…ˆè½ç›˜ã€Œæ–°æ–‡ä»¶å + noã€â†’ è§£å‹ â†’ æ ¸å¯¹ â†’ æ”¹å› yes
+#   archive ä¸€è‡´ä½† dll è¢«æ¸…ç†è¿‡        â†’ è§£å‹ â†’ æ ¸å¯¹ â†’ yes
+#   archive ä¸€è‡´ã€çŠ¶æ€ yesã€dll åœ¨     â†’ è·³è¿‡è§£å‹ï¼Œç›´æ¥ç¼–è¯‘
 #
-# ×´Ì¬ÎªÊ²Ã´ÏÈĞ´ no£º½âÑ¹»òĞ£ÑéÖĞÍ¾Ê§°ÜÊ±£¬±¾µØÇåµ¥Í£ÔÚ no£¬
-# ÏÂ´ÎÔËĞĞ¿´µ½ no ¾Í»áÖØ×ßÍêÕûÁ÷³Ì£¬²»»áÄÃ×Å¾É dll ±àÒë¡£
+# çŠ¶æ€ä¸ºä»€ä¹ˆå…ˆå†™ noï¼šè§£å‹æˆ–æ ¡éªŒä¸­é€”å¤±è´¥æ—¶ï¼Œæœ¬åœ°æ¸…å•åœåœ¨ noï¼Œ
+# ä¸‹æ¬¡è¿è¡Œçœ‹åˆ° no å°±ä¼šé‡èµ°å®Œæ•´æµç¨‹ï¼Œä¸ä¼šæ‹¿ç€æ—§ dll ç¼–è¯‘ã€‚
 #
-# ÓÃ·¨£º
+# ç”¨æ³•ï¼š
 #   powershell -ExecutionPolicy Bypass -File scripts/build.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Configuration Debug
 #   powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -SkipRestore
@@ -27,7 +27,7 @@
 param(
     [string]$Configuration = 'Release',
 
-    # Ìø¹ı»¹Ô­£¨ÒÑ»¹Ô­¹ıÊ±¿ÉÊ¡¼¸Ãë£©
+    # è·³è¿‡è¿˜åŸï¼ˆå·²è¿˜åŸè¿‡æ—¶å¯çœå‡ ç§’ï¼‰
     [switch]$SkipRestore
 )
 
@@ -38,18 +38,18 @@ $repoManifestPath = Join-Path $mpvDir 'manifest.json'
 $localManifestPath = Join-Path $mpvDir 'win-x64\manifest.local.json'
 $dll = Join-Path $mpvDir 'win-x64\libmpv-2.dll'
 
-# ²Ö¿âÇåµ¥ÊÇÎ¨Ò»µÄ±È¶Ô»ù×¼
+# ä»“åº“æ¸…å•æ˜¯å”¯ä¸€çš„æ¯”å¯¹åŸºå‡†
 if (-not (Test-Path $repoManifestPath)) {
-    throw "È±ÉÙ $repoManifestPath£¨Èë¿âÎÄ¼ş£©¡£ÇëÀ­È¡²Ö¿â£¬»òÖ´ĞĞ scripts/fetch-libmpv.ps1 Éú³É¡£"
+    throw "ç¼ºå°‘ $repoManifestPathï¼ˆå…¥åº“æ–‡ä»¶ï¼‰ã€‚è¯·æ‹‰å–ä»“åº“ï¼Œæˆ–æ‰§è¡Œ scripts/fetch-libmpv.ps1 ç”Ÿæˆã€‚"
 }
 $repo = Get-Content $repoManifestPath -Raw | ConvertFrom-Json
 
 $archivePath = Join-Path $mpvDir $repo.archive
 if (-not (Test-Path -LiteralPath $archivePath)) {
-    throw "manifest.json ¼ÇÂ¼µÄ $($repo.archive) ²»ÔÚ²Ö¿âÀï£¬×´Ì¬²»ÍêÕû¡£Çë¼ì²é third_party\mpv\¡£"
+    throw "manifest.json è®°å½•çš„ $($repo.archive) ä¸åœ¨ä»“åº“é‡Œï¼ŒçŠ¶æ€ä¸å®Œæ•´ã€‚è¯·æ£€æŸ¥ third_party\mpv\ã€‚"
 }
 
-# ±¾µØÇåµ¥¿ÉÄÜ»¹Ã»ÓĞ£¨Ê×´ÎÔËĞĞ£©
+# æœ¬åœ°æ¸…å•å¯èƒ½è¿˜æ²¡æœ‰ï¼ˆé¦–æ¬¡è¿è¡Œï¼‰
 $local = $null
 if (Test-Path $localManifestPath) {
     $local = Get-Content $localManifestPath -Raw | ConvertFrom-Json
@@ -64,55 +64,55 @@ function Set-LocalManifest {
 
 $needExtract = $false
 if (-not $local) {
-    Write-Host '±¾µØÇåµ¥²»´æÔÚ£¨Ê×´ÎÔËĞĞ£©¡£'
+    Write-Host 'æœ¬åœ°æ¸…å•ä¸å­˜åœ¨ï¼ˆé¦–æ¬¡è¿è¡Œï¼‰ã€‚'
     $needExtract = $true
 }
 elseif ($local.status -ne 'yes') {
-    Write-Host '±¾µØ×´Ì¬Îª no£¨ÉÏ´Î½âÑ¹/Ğ£ÑéÎ´Íê³É£©¡£'
+    Write-Host 'æœ¬åœ°çŠ¶æ€ä¸º noï¼ˆä¸Šæ¬¡è§£å‹/æ ¡éªŒæœªå®Œæˆï¼‰ã€‚'
     $needExtract = $true
 }
 elseif ($local.archive -ne $repo.archive) {
-    Write-Host "7z ÒÑ¸üĞÂ£º±¾µØ $($local.archive) ¡ú ²Ö¿â $($repo.archive)¡£"
+    Write-Host "7z å·²æ›´æ–°ï¼šæœ¬åœ° $($local.archive) â†’ ä»“åº“ $($repo.archive)ã€‚"
     $needExtract = $true
 }
 elseif (-not (Test-Path $dll)) {
-    Write-Host 'dll ²»´æÔÚ£¨±»ÇåÀí¹ı£©¡£'
+    Write-Host 'dll ä¸å­˜åœ¨ï¼ˆè¢«æ¸…ç†è¿‡ï¼‰ã€‚'
     $needExtract = $true
 }
 
 if ($needExtract) {
-    # ÏÈÂäÅÌ¡¸µ±Ç° 7z + no¡¹£º´ËºóÈÎºÎÒ»²½Ê§°Ü£¬ÏÂ´Î¶¼»áÖØ×ßÍêÕûÁ÷³Ì
+    # å…ˆè½ç›˜ã€Œå½“å‰ 7z + noã€ï¼šæ­¤åä»»ä½•ä¸€æ­¥å¤±è´¥ï¼Œä¸‹æ¬¡éƒ½ä¼šé‡èµ°å®Œæ•´æµç¨‹
     Set-LocalManifest -Status 'no'
 
-    Write-Host "½âÑ¹ $($repo.archive) ..."
+    Write-Host "è§£å‹ $($repo.archive) ..."
     & (Join-Path $PSScriptRoot 'extract-libmpv.ps1') -Archive $repo.archive -Force
 
     $actual = (Get-FileHash -Path $dll -Algorithm SHA256).Hash
     if ($actual -ne $repo.sha256) {
         throw @"
-½âÑ¹³öµÄ dll ¹şÏ£Óë manifest.json ¼ÇÂ¼²»Ò»ÖÂ¡£
-  ¼ÇÂ¼£º$($repo.sha256)
-  Êµ¼Ê£º$actual
-7z Óë manifest.json ¿ÉÄÜ²»ÅäÌ×£¬ÇëÖ´ĞĞ scripts/fetch-libmpv.ps1 -Force ÖØĞÂÉú³É¡£
+è§£å‹å‡ºçš„ dll å“ˆå¸Œä¸ manifest.json è®°å½•ä¸ä¸€è‡´ã€‚
+  è®°å½•ï¼š$($repo.sha256)
+  å®é™…ï¼š$actual
+7z ä¸ manifest.json å¯èƒ½ä¸é…å¥—ï¼Œè¯·æ‰§è¡Œ scripts/fetch-libmpv.ps1 -Force é‡æ–°ç”Ÿæˆã€‚
 "@
     }
 
     Set-LocalManifest -Status 'yes'
-    Write-Host 'dll Ğ£ÑéÍ¨¹ı£¬±¾µØÇåµ¥ÒÑ±ê¼Ç¾ÍĞ÷¡£'
+    Write-Host 'dll æ ¡éªŒé€šè¿‡ï¼Œæœ¬åœ°æ¸…å•å·²æ ‡è®°å°±ç»ªã€‚'
 }
 else {
-    Write-Host "libmpv ÒÑ¾ÍĞ÷£¨$($repo.archive)£©£¬Ìø¹ı½âÑ¹¡£"
+    Write-Host "libmpv å·²å°±ç»ªï¼ˆ$($repo.archive)ï¼‰ï¼Œè·³è¿‡è§£å‹ã€‚"
 }
 
 Push-Location $root
 try {
     if (-not $SkipRestore) {
         dotnet restore Player.slnx
-        if ($LASTEXITCODE -ne 0) { throw '»¹Ô­Ê§°Ü¡£' }
+        if ($LASTEXITCODE -ne 0) { throw 'è¿˜åŸå¤±è´¥ã€‚' }
     }
 
     dotnet build Player.slnx -c $Configuration --no-restore
-    if ($LASTEXITCODE -ne 0) { throw '±àÒëÊ§°Ü¡£' }
+    if ($LASTEXITCODE -ne 0) { throw 'ç¼–è¯‘å¤±è´¥ã€‚' }
 }
 finally {
     Pop-Location

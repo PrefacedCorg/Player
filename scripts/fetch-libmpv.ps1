@@ -112,3 +112,4 @@ $localManifestPath = Join-Path $PackageDir 'win-x64\manifest.local.json'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $localManifestPath) | Out-Null
 ([ordered]@{ archive = $asset.name; status = 'yes' } | ConvertTo-Json) |
     Set-Content -Path $localManifestPath
+

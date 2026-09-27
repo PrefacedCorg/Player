@@ -12,8 +12,7 @@
                            Description="第一段选「不显示」整侧隐藏；第二段选「不显示」只显示第一段">
       <ui:FASettingsExpander.Footer>
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <ComboBox Width="110"
-                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+          <ComboBox ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
                     SelectedItem="{Binding LeftFirstOption, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
@@ -22,8 +21,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <TextBlock Text="/" VerticalAlignment="Center" Opacity="0.6" />
-          <ComboBox Width="110"
-                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+          <ComboBox ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
                     SelectedItem="{Binding LeftSecondOption, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
@@ -39,8 +37,7 @@
                            Description="第一段选「不显示」整侧隐藏；第二段选「不显示」只显示第一段">
       <ui:FASettingsExpander.Footer>
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <ComboBox Width="110"
-                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+          <ComboBox ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
                     SelectedItem="{Binding RightFirstOption, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
@@ -49,8 +46,7 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <TextBlock Text="/" VerticalAlignment="Center" Opacity="0.6" />
-          <ComboBox Width="110"
-                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+          <ComboBox ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
                     SelectedItem="{Binding RightSecondOption, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
               <DataTemplate>

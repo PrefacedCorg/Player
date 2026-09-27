@@ -23,10 +23,12 @@ public static class PlayerControlFactory
         PlayerControlKind.Rolling => new RollingControl(item, BuildChildren(item, dataContext)),
         PlayerControlKind.Group => new GroupControl(BuildChildren(item, dataContext)),
         PlayerControlKind.Stack => new StackControl(BuildChildren(item, dataContext)),
-        // 这三个要读自己 item 的组件设置（跳转秒数 / 音量交互与系统音量模式），构造时把 item 传进去
+        // 这四个要读自己 item 的组件设置（跳转秒数 / 音量交互与系统音量模式 / 进度条左右时间），
+        // 构造时把 item 传进去
         PlayerControlKind.Rewind => new RewindControl(item),
         PlayerControlKind.FastForward => new FastForwardControl(item),
         PlayerControlKind.Volume => new VolumeControl(item),
+        PlayerControlKind.Position => new PositionControl(item),
         _ => CreateLeaf(item.Kind, dataContext),
     };
 
@@ -43,7 +45,6 @@ public static class PlayerControlFactory
             PlayerControlKind.OpenFile => new OpenFileControl(),
             PlayerControlKind.PlayPause => new PlayPauseControl(),
             PlayerControlKind.Stop => new StopControl(),
-            PlayerControlKind.Position => new PositionControl { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center },
             PlayerControlKind.TimeDisplay => new TimeDisplayControl(),
             PlayerControlKind.Renderer => new RendererControl(),
             PlayerControlKind.Close => new CloseControl(),

@@ -15,6 +15,9 @@ public partial class RewindControl : UserControl
         InitializeComponent();
     }
 
+    /// <summary>预览器/设计时用（工厂始终走带 item 的构造）：默认设置兜底为 10 秒。</summary>
+    public RewindControl() : this(new PlayerControlItem(PlayerControlKind.Rewind, "回退", new SeekStepControlSettings())) { }
+
     private void OnClick(object? sender, RoutedEventArgs e)
     {
         var seconds = _item.Settings is SeekStepControlSettings settings ? settings.Seconds : 10;

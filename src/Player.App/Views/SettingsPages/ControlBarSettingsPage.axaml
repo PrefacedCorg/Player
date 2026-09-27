@@ -350,6 +350,9 @@
                         <DataTemplate DataType="app:VolumeControlSettings">
                             <controlSettings:VolumeControlSettingsView />
                         </DataTemplate>
+                        <DataTemplate DataType="app:PositionControlSettings">
+                            <controlSettings:PositionControlSettingsView />
+                        </DataTemplate>
                     </ContentControl.DataTemplates>
                 </ContentControl>
             </TabItem>

@@ -226,6 +226,21 @@ public partial class VolumeControlSettings : PlayerControlSettings
     /// </summary>
     [ObservableProperty] private bool _useSystemVolume;
 
+    /// <summary>「隐藏滑块」的可用性：总开关（显示音量百分比）与「数字直接编辑」都开启才有意义。</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool CanHideSlider => ShowVolumeNumber && EditableNumber;
+
+    /// <summary>总开关关闭时，数字相关子项失效，滑块回到默认显示。</summary>
+    partial void OnShowVolumeNumberChanged(bool value)
+    {
+        if (!value)
+        {
+            HideSlider = false;
+        }
+
+        OnPropertyChanged(nameof(CanHideSlider));
+    }
+
     /// <summary>关掉「数字直接编辑」时，依赖它的「隐藏滑块」一并关闭。</summary>
     partial void OnEditableNumberChanged(bool value)
     {
@@ -233,6 +248,8 @@ public partial class VolumeControlSettings : PlayerControlSettings
         {
             HideSlider = false;
         }
+
+        OnPropertyChanged(nameof(CanHideSlider));
     }
 
     public override void CopyFrom(PlayerControlSettings source)
@@ -247,7 +264,129 @@ public partial class VolumeControlSettings : PlayerControlSettings
             HideSlider = volume.HideSlider;
             MouseWheelStep = volume.MouseWheelStep;
             UseSystemVolume = volume.UseSystemVolume;
+            // 兜底：旧配置可能出现「编辑关着但隐藏滑块开着」的组合，恢复时归一化
+            if (!CanHideSlider)
+            {
+                HideSlider = false;
+            }
         }
+    }
+}
+
+/// <summary>进度条左右两侧时间显示的来源：None 不显示该段；总 / 已过 / 剩余。</summary>
+public enum ProgressTimeSource
+{
+    None,
+    Total,
+    Elapsed,
+    Remaining,
+}
+
+/// <summary>给设置页 ComboBox 用的「来源 → 中文名」选项表。</summary>
+public static class ProgressTimeSourceOptions
+{
+    public sealed record Option(ProgressTimeSource Value, string Label);
+
+    public static readonly IReadOnlyList<Option> All =
+    [
+        new(ProgressTimeSource.None, "不显示"),
+        new(ProgressTimeSource.Total, "总时长"),
+        new(ProgressTimeSource.Elapsed, "已过"),
+        new(ProgressTimeSource.Remaining, "剩余"),
+    ];
+}
+
+/// <summary>进度条组件的设置：左右两侧时间显示来源（各两段）与 h:m:s:ms 显示精度（双头滑块选起止单位）。</summary>
+public partial class PositionControlSettings : PlayerControlSettings
+{
+    /// <summary>时间精度：显示到哪个单位（0=时 1=分 2=秒 3=毫秒），与 <see cref="PrecisionEnd"/> 构成双头区间。</summary>
+    [ObservableProperty] private int _precisionStart = 1;
+
+    /// <summary>时间精度：显示到哪个单位（0=时 1=分 2=秒 3=毫秒）。</summary>
+    [ObservableProperty] private int _precisionEnd = 2;
+
+    /// <summary>进度条左侧第一段来源（默认已过；选「不显示」整侧隐藏）。</summary>
+    [ObservableProperty] private ProgressTimeSource _leftFirst = ProgressTimeSource.Elapsed;
+
+    /// <summary>进度条左侧第二段来源（默认总时长；选「不显示」只显示第一段）。</summary>
+    [ObservableProperty] private ProgressTimeSource _leftSecond = ProgressTimeSource.Total;
+
+    /// <summary>进度条右侧第一段来源（默认剩余）。</summary>
+    [ObservableProperty] private ProgressTimeSource _rightFirst = ProgressTimeSource.Remaining;
+
+    /// <summary>进度条右侧第二段来源（默认不显示）。</summary>
+    [ObservableProperty] private ProgressTimeSource _rightSecond = ProgressTimeSource.None;
+
+    // 给设置页 ComboBox 用的包装（Avalonia 无 SelectedValuePath，直接绑选项对象）
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ProgressTimeSourceOptions.Option LeftFirstOption
+    {
+        get => ProgressTimeSourceOptions.All.First(o => o.Value == LeftFirst);
+        set => LeftFirst = value.Value;
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ProgressTimeSourceOptions.Option LeftSecondOption
+    {
+        get => ProgressTimeSourceOptions.All.First(o => o.Value == LeftSecond);
+        set => LeftSecond = value.Value;
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ProgressTimeSourceOptions.Option RightFirstOption
+    {
+        get => ProgressTimeSourceOptions.All.First(o => o.Value == RightFirst);
+        set => RightFirst = value.Value;
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ProgressTimeSourceOptions.Option RightSecondOption
+    {
+        get => ProgressTimeSourceOptions.All.First(o => o.Value == RightSecond);
+        set => RightSecond = value.Value;
+    }
+
+    public override void CopyFrom(PlayerControlSettings source)
+    {
+        base.CopyFrom(source);
+        if (source is PositionControlSettings position)
+        {
+            PrecisionStart = position.PrecisionStart;
+            PrecisionEnd = position.PrecisionEnd;
+            LeftFirst = position.LeftFirst;
+            LeftSecond = position.LeftSecond;
+            RightFirst = position.RightFirst;
+            RightSecond = position.RightSecond;
+        }
+    }
+
+    /// <summary>
+    /// 按起止单位格式化时长：起始单位吸收更高级单位（如从分开始时 1:15:00 显示 75:00），
+    /// 起始段不补零也不带分隔符，其余段固定位数（分/秒两位、毫秒三位），毫秒前用「.」分隔。
+    /// </summary>
+    public static string FormatTime(TimeSpan t, int start, int end)
+    {
+        (start, end) = (Math.Min(start, end), Math.Max(start, end));
+        t = t < TimeSpan.Zero ? TimeSpan.Zero : t;
+
+        var text = string.Empty;
+        for (var unit = start; unit <= end; unit++)
+        {
+            var (value, width) = unit switch
+            {
+                0 => ((long)t.TotalHours, 0),
+                1 => (unit == start ? (long)t.TotalMinutes : t.Minutes, 2),
+                2 => (unit == start ? (long)t.TotalSeconds : t.Seconds, 2),
+                _ => (unit == start ? (long)t.TotalMilliseconds : t.Milliseconds, 3),
+            };
+
+            // 分隔符只加在非起始段之前：毫秒段用「.」，其余用「:」
+            var separator = unit == start ? string.Empty : unit == 3 ? "." : ":";
+            text += separator + (width > 0 ? value.ToString($"D{width}") : value.ToString());
+        }
+
+        return text;
     }
 }
 

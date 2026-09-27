@@ -5,25 +5,19 @@
              Background="Transparent"
              ClipToBounds="False">
 
-  <!-- 自绘进度条。轨道/填充/拇指的位置全部在代码后置取整到整像素（见 PositionBar.axaml.cs），
-       避免 Slider 内部 Track 把灰色剩余段边界放在亚像素位置、随播放推进反复抗锯齿（肉眼即抖动）。
+  <!-- 自绘滑块（进度条/音量共用）。轨道/填充/拇指的位置全部在代码后置取整到整像素，
+       避免 Slider 内部 Track 把灰色剩余段边界放在亚像素位置、随值推进反复抗锯齿（肉眼即抖动）。
        拇指直接复用 FluentAvalonia 的 SliderThumbStyle，观感与原 Slider 完全一致。
-       轨道两端各缩进 ThumbSize/2（9px），给 Thumb 留出绘制缓冲，最左最右时圆圈不被控件边缘挡住。 -->
+       轨道两端各缩进 ThumbSize/2（9px），给 Thumb 留出绘制缓冲，最左最右时圆圈不被控件边缘挡住。
+       水平/竖直两种方向（Orientation，代码后置按方向摆轨道与填充）。 -->
   <Grid x:Name="Root" ClipToBounds="False">
-    <!-- 灰色剩余轨道：两端各缩进 TrackPadding=9px，给 Thumb 留出绘制缓冲 -->
-    <Border Height="{DynamicResource SliderTrackThemeHeight}"
+    <!-- 灰色剩余轨道：宽高/边距按方向在代码后置设置 -->
+    <Border x:Name="TrackPart"
             CornerRadius="{DynamicResource SliderTrackCornerRadius}"
-            VerticalAlignment="Center"
-            Margin="9,0"
             Background="{DynamicResource SliderTrackFill}" />
 
     <Border x:Name="FillPart"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Center"
-            Width="0"
-            Height="{DynamicResource SliderTrackThemeHeight}"
             CornerRadius="{DynamicResource SliderTrackCornerRadius}"
-            Margin="9,0,0,0"
             Background="{DynamicResource SliderTrackValueFill}" />
 
     <!-- Thumb 在 Canvas 上自由定位，ClipToBounds=False 允许它溢出 Root 边缘也能完整绘制 -->

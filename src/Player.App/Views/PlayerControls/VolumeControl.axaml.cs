@@ -1,13 +1,13 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using FluentAvalonia.UI.Controls;
 using Player.App.Platform;
 using Player.App.ViewModels;
+using Player.App.Views;
 
 namespace Player.App.Views.PlayerControls;
 
@@ -31,6 +31,9 @@ public partial class VolumeControl : UserControl
     /// <summary>回写 UI 时防 ValueChanged 事件回环。</summary>
     private bool _syncing;
 
+    /// <summary>正在拖动滑块（防抖）：期间只刷新显示不下发引擎/系统，松手才提交。</summary>
+    private bool _dragging;
+
     private VolumeControlSettings Settings => _item.Settings as VolumeControlSettings ?? new VolumeControlSettings();
 
     private MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
@@ -48,6 +51,9 @@ public partial class VolumeControl : UserControl
         Loaded += OnLoaded;
         DetachedFromVisualTree += OnDetached;
     }
+
+    /// <summary>预览器/设计时用（工厂始终走带 item 的构造）：默认设置走 Settings 兜底。</summary>
+    public VolumeControl() : this(new PlayerControlItem(PlayerControlKind.Volume, "音量", new VolumeControlSettings())) { }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
@@ -157,10 +163,10 @@ public partial class VolumeControl : UserControl
         SyncDisplay();
     }
 
-    /// <summary>系统被外部（键盘/其它应用）调低到 100 以下：放弃软件增益直接跟随。</summary>
+    /// <summary>系统被外部（键盘/其它应用）调低到 100 以下：放弃软件增益直接跟随。拖动期间不干扰。</summary>
     private void OnSystemVolumeChanged(object? sender, double system)
     {
-        if (!Settings.UseSystemVolume || system >= 100d)
+        if (_dragging || !Settings.UseSystemVolume || system >= 100d)
         {
             return;
         }
@@ -174,15 +180,32 @@ public partial class VolumeControl : UserControl
         SyncDisplay();
     }
 
-    /// <summary>滑块 / 数字框的值变化：统一收敛到当前值再应用。</summary>
-    private void OnSliderChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    /// <summary>滑块的值变化（PositionBar 自绘滑块）：拖动中只更新显示，松手由 ScrubCompleted 提交。</summary>
+    private void OnSliderChanged(object? sender, EventArgs e)
     {
-        if (_syncing || Math.Abs(e.NewValue - _value) < 0.01d)
+        if (sender is not PositionBar bar || _syncing || Math.Abs(bar.Value - _value) < 0.01d)
         {
             return;
         }
 
-        _value = e.NewValue;
+        _value = bar.Value;
+        if (_dragging)
+        {
+            SyncDisplay();
+        }
+        else
+        {
+            ApplyToTarget();
+        }
+    }
+
+    /// <summary>开始拖动滑块：进入防抖状态，外部值（系统音量轮询等）不再回写。</summary>
+    private void OnScrubStarted(object? sender, EventArgs e) => _dragging = true;
+
+    /// <summary>松手：提交当前值到引擎/系统（防抖终点）。</summary>
+    private void OnScrubCompleted(object? sender, EventArgs e)
+    {
+        _dragging = false;
         ApplyToTarget();
     }
 

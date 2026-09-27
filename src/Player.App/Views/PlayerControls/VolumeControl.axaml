@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:views="clr-namespace:Player.App.Views"
              x:Class="Player.App.Views.PlayerControls.VolumeControl"
              PointerWheelChanged="OnPointerWheelChanged">
 
@@ -14,13 +15,16 @@
               IsVisible="False"
               Foreground="{DynamicResource PlayerControlForeground}" />
 
-      <!-- 横向模式：滑块横着摆在数字旁边（默认显示） -->
-      <Slider x:Name="HorizontalSlider"
-              Width="150"
-              Minimum="0"
-              Maximum="200"
-              VerticalAlignment="Center"
-              ValueChanged="OnSliderChanged" />
+      <!-- 横向模式：自绘滑块（整像素吸附防抖）摆在数字旁边（默认显示）。
+           拖动期间不回写引擎/系统，松手才提交（防抖，同进度条 ScrubStarted/Completed 机制） -->
+      <views:PositionBar x:Name="HorizontalSlider"
+                         Width="150"
+                         Minimum="0"
+                         Maximum="200"
+                         VerticalAlignment="Center"
+                         ValueChanged="OnSliderChanged"
+                         ScrubStarted="OnScrubStarted"
+                         ScrubCompleted="OnScrubCompleted" />
 
       <!-- 数字：只读显示（显示/隐藏百分号、字号/前景色随控制栏设置，见 code-behind） -->
       <TextBlock x:Name="NumberDisplay"
@@ -69,13 +73,16 @@
                           SpinButtonPlacementMode="Compact"
                           HorizontalAlignment="Center"
                           IsVisible="False" />
-          <Slider x:Name="VerticalSlider"
-                  Orientation="Vertical"
-                  Height="170"
-                  Width="34"
-                  Minimum="0"
-                  Maximum="200"
-                  ValueChanged="OnSliderChanged" />
+          <views:PositionBar x:Name="VerticalSlider"
+                             Orientation="Vertical"
+                             Height="170"
+                             Width="34"
+                             HorizontalAlignment="Center"
+                             Minimum="0"
+                             Maximum="200"
+                             ValueChanged="OnSliderChanged"
+                             ScrubStarted="OnScrubStarted"
+                             ScrubCompleted="OnScrubCompleted" />
         </StackPanel>
       </Border>
     </Popup>

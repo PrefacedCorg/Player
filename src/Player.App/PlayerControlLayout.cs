@@ -242,10 +242,11 @@ public static class PlayerControlCatalog
         PlayerControlKind.Slide or PlayerControlKind.Rolling or PlayerControlKind.Group or PlayerControlKind.Stack;
 
     /// <summary>某种控件是否有自己的设置界面（「组件设置」标签页的显示开关：轮播/滚动有参数，
-    /// 快进/回退可调跳转秒数，音量有显示方式与系统音量接管）。</summary>
+    /// 快进/回退可调跳转秒数，音量有显示方式与系统音量接管，进度条有左右时间显示与精度）。</summary>
     public static bool HasSettingsView(PlayerControlKind kind) => kind is
         PlayerControlKind.Slide or PlayerControlKind.Rolling
-        or PlayerControlKind.Rewind or PlayerControlKind.FastForward or PlayerControlKind.Volume;
+        or PlayerControlKind.Rewind or PlayerControlKind.FastForward or PlayerControlKind.Volume
+        or PlayerControlKind.Position;
 
     /// <summary>某种控件的设置对象工厂。</summary>
     public static PlayerControlSettings CreateSettings(PlayerControlKind kind) => kind switch
@@ -257,6 +258,7 @@ public static class PlayerControlCatalog
         PlayerControlKind.Divider => new DividerControlSettings(),
         PlayerControlKind.Rewind or PlayerControlKind.FastForward => new SeekStepControlSettings(),
         PlayerControlKind.Volume => new VolumeControlSettings(),
+        PlayerControlKind.Position => new PositionControlSettings(),
         _ => new PlayerControlSettings(),
     };
 }

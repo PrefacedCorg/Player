@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:Player.App"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="Player.App.Views.SettingsPages.ControlSettings.PositionControlSettingsView"
+             x:DataType="app:PositionControlSettings">
+
+  <!-- 进度条组件的设置：左右时间来源（各两段，选「不显示」即隐藏该段）+ h:m:s:ms 精度双头滑块 -->
+  <StackPanel Spacing="8">
+
+    <ui:FASettingsExpander Header="左侧显示"
+                           Description="第一段选「不显示」整侧隐藏；第二段选「不显示」只显示第一段">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <ComboBox Width="110"
+                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+                    SelectedItem="{Binding LeftFirstOption, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="/" VerticalAlignment="Center" Opacity="0.6" />
+          <ComboBox Width="110"
+                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+                    SelectedItem="{Binding LeftSecondOption, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="右侧显示"
+                           Description="第一段选「不显示」整侧隐藏；第二段选「不显示」只显示第一段">
+      <ui:FASettingsExpander.Footer>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <ComboBox Width="110"
+                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+                    SelectedItem="{Binding RightFirstOption, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBlock Text="/" VerticalAlignment="Center" Opacity="0.6" />
+          <ComboBox Width="110"
+                    ItemsSource="{x:Static app:ProgressTimeSourceOptions.All}"
+                    SelectedItem="{Binding RightSecondOption, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
+    <ui:FASettingsExpander Header="时间精度"
+                           Description="双头滑块选起止单位（时 → 分 → 秒 → 毫秒）：起始单位吸收更高级单位，如从分开始时 1:15:00 显示 75:00">
+      <StackPanel Spacing="8">
+        <ui:FARangeSlider Width="300"
+                          Minimum="0"
+                          Maximum="3"
+                          StepFrequency="1"
+                          RangeStart="{Binding PrecisionStart, Mode=TwoWay}"
+                          RangeEnd="{Binding PrecisionEnd, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="时" Opacity="0.6" />
+          <TextBlock Text="分" Opacity="0.6" />
+          <TextBlock Text="秒" Opacity="0.6" />
+          <TextBlock Text="毫秒" Opacity="0.6" />
+          <TextBlock x:Name="FormatPreview" Margin="12 0 0 0" />
+        </StackPanel>
+      </StackPanel>
+    </ui:FASettingsExpander>
+  </StackPanel>
+</UserControl>

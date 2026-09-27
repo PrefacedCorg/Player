@@ -33,8 +33,8 @@
       </ui:FASettingsExpanderItem>
 
       <ui:FASettingsExpanderItem Content="隐藏滑块"
-                                 Description="开启「数字直接编辑」后可用：只留数字框，不再显示滑块"
-                                 IsEnabled="{Binding EditableNumber}">
+                                 Description="开启「数字直接编辑」后可用：只留数字框，不再显示滑块（关掉显示音量百分比后滑块恢复显示）"
+                                 IsEnabled="{Binding CanHideSlider}">
         <ui:FASettingsExpanderItem.Footer>
           <ToggleSwitch IsChecked="{Binding HideSlider, Mode=TwoWay}" OnContent="开" OffContent="关" />
         </ui:FASettingsExpanderItem.Footer>

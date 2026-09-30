@@ -44,6 +44,19 @@ public partial class MainWindowViewModel : ObservableObject
     private TimeSpan _seekTarget;
     private DateTime _seekGraceUntil = DateTime.MinValue;
 
+    /// <summary>拖动预览是否进行中（进度条拖动 / 画面左右滑动，对应开关开启时）。</summary>
+    private bool _previewing;
+
+    /// <summary>预览开始时是否在播放：抬手后要恢复（本来暂停的就保持暂停）。</summary>
+    private bool _resumeAfterPreview;
+
+    /// <summary>最近一次预览 seek 的时间（拖动中事件很密，按间隔节流）。</summary>
+    private DateTime _lastPreviewSeekAt = DateTime.MinValue;
+
+    /// <summary>预览 seek 的最小间隔：当前为 0 = 不节流（拖动中每个位移都下发，最跟手；
+    /// 若画面打顿就把它调大，如 100ms 约等于 10 次/秒）。</summary>
+    private static readonly TimeSpan PreviewSeekInterval = TimeSpan.Zero;
+
     /// <summary>C# 侧播放队列（不依赖 mpv 内部播放列表：循环/随机的决策在 UI 侧完成）。</summary>
     private readonly List<MediaItem> _queue = [];
 
@@ -81,6 +94,10 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private double _volume = 100d;
+
+    /// <summary>画面亮度（mpv brightness，-100–100，0 为原样）：画面手势上下滑动调节，不参与持久化。</summary>
+    [ObservableProperty]
+    private double _brightness;
 
     [ObservableProperty]
     private string _playPauseText = "播放";
@@ -309,6 +326,15 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>亮度变化即时下发到引擎（画面手势上下滑动，边滑边变）。</summary>
+    partial void OnBrightnessChanged(double value)
+    {
+        if (_engine is not null)
+        {
+            _engine.Brightness = value;
+        }
+    }
+
     /// <summary>
     /// 循环模式变化：同步按钮文本，并把「单个循环」下发为 mpv 的 loop-file——
     /// 开启时当前文件播完由 mpv 自动从头继续（不会触发 <see cref="OnPlaybackEnded"/>），
@@ -388,14 +414,17 @@ public partial class MainWindowViewModel : ObservableObject
     /// 相对当前播放位置快进/快退（秒）。与进度条拖动一样设置回弹宽限期，
     /// 并立即刷新位置与时间显示——mpv 生效前的轮询还报旧位置，不先改界面就会来回跳。
     /// </summary>
-    private void SeekRelative(double deltaSeconds)
+    private void SeekRelative(double deltaSeconds) => SeekTo(PositionSeconds + deltaSeconds);
+
+    /// <summary>跳转到绝对位置（夹取到 0–总时长）：设置回弹宽限期，并立即刷新界面位置与时间显示。</summary>
+    private void SeekTo(double seconds)
     {
         if (_engine is null)
         {
             return;
         }
 
-        var target = TimeSpan.FromSeconds(Math.Clamp(PositionSeconds + deltaSeconds, 0d, DurationSeconds));
+        var target = TimeSpan.FromSeconds(Math.Clamp(seconds, 0d, DurationSeconds));
         _seekTarget = target;
         _seekGraceUntil = DateTime.UtcNow.AddMilliseconds(800);
         _engine.Seek(target);
@@ -403,24 +432,24 @@ public partial class MainWindowViewModel : ObservableObject
         TimeText = $"{Format(target)} / {Format(TimeSpan.FromSeconds(DurationSeconds))}";
     }
 
-    /// <summary>拖动期间时间显示跟随手指，而不是跟着播放位置。</summary>
+    /// <summary>拖动期间时间显示跟随手指，而不是跟着播放位置；预览开启时画面也一起跟着走。</summary>
     partial void OnPositionSecondsChanged(double value)
     {
         if (IsScrubbing)
         {
             TimeText = $"{Format(TimeSpan.FromSeconds(value))} / {Format(TimeSpan.FromSeconds(DurationSeconds))}";
+            PreviewSeek(value);
         }
     }
 
-    /// <summary>视频区被触摸（来自透明触摸层）：切换控制层显隐。M2 会在这里接入完整手势路由。</summary>
-    public void OnVideoTapped(double x, double y)
-    {
-        var action = IsControlBarVisible ? "收起" : "呼出";
-        StartupTrace.Mark($"画面触摸 ({x:F0},{y:F0}) → {action}控制层");
-        IsControlBarVisible = !IsControlBarVisible;
-    }
+    /// <summary>呼出 / 收起控制层（画面单击手势的默认操作，见 <see cref="VideoGestureSettings"/>）。</summary>
+    public void ToggleControlBar() => IsControlBarVisible = !IsControlBarVisible;
 
-    public void BeginScrub()
+    /// <summary>
+    /// 进度条开始拖动。<paramref name="preview"/> 来自进度条组件设置「拖动时预览画面」：
+    /// 开启时整个拖动过程中画面跟着手指走（见 <see cref="BeginSeekPreview"/>）。
+    /// </summary>
+    public void BeginScrub(bool preview)
     {
         if (IsScrubbing)
         {
@@ -428,7 +457,12 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         IsScrubbing = true;
-        StartupTrace.Mark("进度条：开始拖动");
+        if (preview)
+        {
+            BeginSeekPreview();
+        }
+
+        StartupTrace.Mark($"进度条：开始拖动（画面预览{(preview ? "开" : "关")}）");
     }
 
     public void EndScrub()
@@ -439,11 +473,68 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         IsScrubbing = false;
-        var target = TimeSpan.FromSeconds(PositionSeconds);
-        _seekTarget = target;
-        _seekGraceUntil = DateTime.UtcNow.AddMilliseconds(800);
-        _engine?.Seek(target);
-        StartupTrace.Mark($"进度拖动完成 → seek {target.TotalSeconds:F1}s");
+        EndSeekPreview(PositionSeconds);
+        StartupTrace.Mark($"进度拖动完成 → seek {PositionSeconds:F1}s");
+    }
+
+    // ── 拖动预览：拖动过程中把画面跳到目标位置 ────────────────────────────────
+    // 进度条拖动与画面左右滑动共用：开始预览时先暂停（暂停下 seek 才能立即出目标画面），
+    // 抬手时跳到最终位置并恢复原来的播放状态。对应开关关闭时这些方法都是空操作。
+
+    /// <summary>开始拖动预览：记住播放状态并暂停，让拖动过程中的 seek 立即出画面。</summary>
+    public void BeginSeekPreview()
+    {
+        if (_previewing || _engine is null)
+        {
+            return;
+        }
+
+        _previewing = true;
+        _lastPreviewSeekAt = DateTime.MinValue;
+        _resumeAfterPreview = !_engine.State.IsPaused;
+        if (_resumeAfterPreview)
+        {
+            _engine.Pause();
+        }
+    }
+
+    /// <summary>拖动过程中更新预览位置（节流：约 10 次/秒，再密只会有更多中间帧被丢弃）。</summary>
+    public void PreviewSeek(double seconds)
+    {
+        if (!_previewing || _engine is null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (now - _lastPreviewSeekAt < PreviewSeekInterval)
+        {
+            return;
+        }
+
+        _lastPreviewSeekAt = now;
+        SeekTo(seconds);
+    }
+
+    /// <summary>
+    /// 结束拖动预览：跳到最终位置，并恢复拖动前的播放状态（本来暂停的保持暂停）。
+    /// 没在预览（开关关闭）时等价于一次普通跳转。
+    /// </summary>
+    public void EndSeekPreview(double seconds)
+    {
+        SeekTo(seconds);
+        if (!_previewing)
+        {
+            return;
+        }
+
+        _previewing = false;
+        if (_resumeAfterPreview)
+        {
+            _engine?.Play();
+        }
+
+        _resumeAfterPreview = false;
     }
 
     /// <summary>
@@ -742,7 +833,8 @@ public partial class MainWindowViewModel : ObservableObject
         TimingText = sb.ToString();
     }
 
-    private static string Format(TimeSpan value) =>
+    /// <summary>时间文本格式（h:mm:ss 或 mm:ss）：时间显示与画面滑动的中央提示共用。</summary>
+    internal static string Format(TimeSpan value) =>
         value.TotalHours >= 1
             ? $"{(int)value.TotalHours}:{value.Minutes:D2}:{value.Seconds:D2}"
             : $"{value.Minutes:D2}:{value.Seconds:D2}";

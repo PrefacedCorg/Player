@@ -317,6 +317,9 @@ public partial class PositionControlSettings : PlayerControlSettings
     /// <summary>进度条右侧第二段来源（默认不显示）。</summary>
     [ObservableProperty] private ProgressTimeSource _rightSecond = ProgressTimeSource.None;
 
+    /// <summary>拖动进度条时预览目标位置的画面（暂停后连续跳转预览，松手恢复原播放状态）。</summary>
+    [ObservableProperty] private bool _showScrubPreview = true;
+
     // 给设置页 ComboBox 用的包装（Avalonia 无 SelectedValuePath，直接绑选项对象）
 
     [System.Text.Json.Serialization.JsonIgnore]
@@ -358,6 +361,7 @@ public partial class PositionControlSettings : PlayerControlSettings
             LeftSecond = position.LeftSecond;
             RightFirst = position.RightFirst;
             RightSecond = position.RightSecond;
+            ShowScrubPreview = position.ShowScrubPreview;
         }
     }
 

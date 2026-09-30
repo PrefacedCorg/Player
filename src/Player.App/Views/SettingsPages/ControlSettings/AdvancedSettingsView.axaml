@@ -159,9 +159,11 @@
       </ui:FASettingsExpander>
 
       <!-- 分割线：列比例（只在选中对齐分割线时显示，见 code-behind；区块单独把 DataContext
-           定到 Settings 上并声明具体类型，编译绑定才认得 LeftWeight/RightWeight） -->
+           定到 Settings 上并声明具体类型，编译绑定才认得 LeftWeight/RightWeight。
+           这里的 DataContext 必须用 ReflectionBinding：编译绑定会拿本元素上刚声明的
+           x:DataType（DividerControlSettings）去解析「Settings」，必然解析不到） -->
       <StackPanel x:Name="DividerSettings" Spacing="4" IsVisible="False"
-                  x:DataType="app:DividerControlSettings" DataContext="{Binding Settings}">
+                  x:DataType="app:DividerControlSettings" DataContext="{ReflectionBinding Settings}">
         <TextBlock Text="分割线" FontWeight="SemiBold" Margin="0 0 0 4" />
         <ui:FASettingsExpander Header="列比例"
                                Description="左右两列的宽度比例（Grid 的 2*/1* 语义）。一根分割线时两项都用；两根时第一根的左比例管左列、第二根的右比例管右列（中间列 Auto 自适应）。">

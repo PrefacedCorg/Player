@@ -94,6 +94,30 @@ public partial class DisplaySettingsViewModel : SettingsPageViewModel
 public sealed record VideoScalingOption(VideoScalingMode Mode, string Title, string Description);
 
 /// <summary>
+/// 画面手势：视频区触摸层上的单击 / 双击 / 左右滑动 / 左半区与右半区上下滑动各自做什么。
+/// 单击与双击是离散操作，滑动是按位移比例的连续调节（滑多少调多少）。
+/// 设置直接落在共享的 <see cref="PlayerSettings.Gestures"/> 上，主窗口执行手势时现读这份设置，
+/// 因此改完即生效，不需要额外的保存或应用动作。
+/// </summary>
+public partial class GestureSettingsViewModel : SettingsPageViewModel
+{
+    public GestureSettingsViewModel(PlayerSettings settings)
+        : base("画面手势", "视频区单击、双击与上下左右滑动对应的操作", FASymbol.Remote)
+    {
+        Gestures = settings.Gestures;
+    }
+
+    /// <summary>与主窗口共用的手势设置：下拉框的包装属性分别绑一类手势。</summary>
+    public VideoGestureSettings Gestures { get; }
+
+    /// <summary>单击 / 双击可对应的操作（操作 → 中文名）。</summary>
+    public IReadOnlyList<VideoGestureActionOptions.Option> ActionOptions => VideoGestureActionOptions.All;
+
+    /// <summary>滑动可对应的连续调节项（调节项 → 中文名）。</summary>
+    public IReadOnlyList<VideoSwipeAdjustOptions.Option> AdjustOptions => VideoSwipeAdjustOptions.All;
+}
+
+/// <summary>
 /// 控制栏。控件本身是组件化的（一个控件一个文件，见 Views/PlayerControls），
 /// 这里管"控制栏里有几行、每行放哪些控件、按什么顺序、容器里放什么"（照抄 ClassIsland-2.0
 /// 的主界面多行结构）：可以加行/删行、把控件包裹进容器、把控件移进/移出容器、

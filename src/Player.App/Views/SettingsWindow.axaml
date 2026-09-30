@@ -40,6 +40,9 @@
             <DataTemplate DataType="vm:DisplaySettingsViewModel">
               <pages:DisplaySettingsPage />
             </DataTemplate>
+            <DataTemplate DataType="vm:GestureSettingsViewModel">
+              <pages:GestureSettingsPage />
+            </DataTemplate>
             <DataTemplate DataType="vm:ControlBarSettingsViewModel">
               <pages:ControlBarSettingsPage />
             </DataTemplate>

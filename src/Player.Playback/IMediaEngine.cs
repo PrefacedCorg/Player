@@ -57,6 +57,12 @@ public interface IMediaEngine : IDisposable
     double Volume { get; set; }
 
     /// <summary>
+    /// 画面亮度（mpv brightness，-100–100，0 为原样）。画面手势上下滑动调节用，
+    /// 换文件后保持；不改变解码与缩放链路。
+    /// </summary>
+    double Brightness { get; set; }
+
+    /// <summary>
     /// 画面缩放方式。播放中切换需立即生效（实现方直接改 mpv 运行期属性，不重新加载文件）。
     /// </summary>
     VideoScalingMode ScalingMode { get; set; }

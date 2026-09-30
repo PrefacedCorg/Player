@@ -22,6 +22,9 @@ public sealed class MpvMediaEngine : IMediaEngine
     /// <summary>音量上限（%）。100 为原始增益，之上是软件放大，可能削波失真。</summary>
     private const double MaxVolume = 200d;
 
+    /// <summary>画面亮度的量程上限：mpv brightness 的取值范围是 -100–100（0 为原样）。</summary>
+    private const double MaxBrightness = 100d;
+
     private readonly MpvContext _mpv;
     private readonly Timer _pollTimer;
     private readonly object _gate = new();
@@ -83,6 +86,13 @@ public sealed class MpvMediaEngine : IMediaEngine
 
     /// <summary>mpv 实际生效的音量上限，用于启动自检（确认 volume-max 放宽成功）。</summary>
     public double VolumeMax => Safe(() => _mpv.VolumeMax.Get(), (double?)null) ?? 0d;
+
+    /// <summary>画面亮度（mpv brightness 属性，-100–100）：画面手势上下滑动调节。</summary>
+    public double Brightness
+    {
+        get => ReadDouble("brightness");
+        set => Safe(() => _mpv.SetPropertyDouble("brightness", Math.Clamp(value, -MaxBrightness, MaxBrightness)));
+    }
 
     /// <summary>
     /// 画面缩放方式。改为立即下发：keepaspect / video-unscaled / panscan 都是 mpv 的运行期属性，

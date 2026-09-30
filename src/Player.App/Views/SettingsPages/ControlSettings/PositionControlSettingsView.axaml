@@ -58,6 +58,13 @@
       </ui:FASettingsExpander.Footer>
     </ui:FASettingsExpander>
 
+    <ui:FASettingsExpander Header="拖动时预览画面"
+                           Description="按住进度条拖动时，画面跟随手指跳到目标位置（拖动期间暂停预览，松手恢复原来的播放 / 暂停状态）">
+      <ui:FASettingsExpander.Footer>
+        <ToggleSwitch IsChecked="{Binding ShowScrubPreview, Mode=TwoWay}" OnContent="开" OffContent="关" />
+      </ui:FASettingsExpander.Footer>
+    </ui:FASettingsExpander>
+
     <ui:FASettingsExpander Header="时间精度"
                            Description="双头滑块选起止单位（时 → 分 → 秒 → 毫秒）：起始单位吸收更高级单位，如从分开始时 1:15:00 显示 75:00">
       <StackPanel Spacing="8">

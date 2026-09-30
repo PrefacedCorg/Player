@@ -26,8 +26,9 @@ public partial class PositionControl : UserControl
         _item = item;
         InitializeComponent();
 
-        // DataContext 在事件发生时再取，避免控件构造顺序影响
-        Bar.ScrubStarted += (_, _) => Vm?.BeginScrub();
+        // DataContext 在事件发生时再取，避免控件构造顺序影响。
+        // 「拖动时预览画面」是组件设置，开始拖动时按它决定要不要让画面跟着手指走
+        Bar.ScrubStarted += (_, _) => Vm?.BeginScrub(Settings.ShowScrubPreview);
         Bar.ScrubCompleted += (_, _) => Vm?.EndScrub();
 
         Loaded += OnLoaded;

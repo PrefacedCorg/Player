@@ -12,3 +12,4 @@ obj/
 # 冒烟测试用的生成素材
 /test-media/
 /publish
+/.idea

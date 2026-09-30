@@ -86,6 +86,7 @@ public static class PlayerSettingsStore
     {
         _attached = settings;
         settings.PropertyChanged += OnItemChanged;
+        settings.Gestures.PropertyChanged += OnItemChanged;
 
         ControlBarLayoutWatcher? watcher = null;
         watcher = new ControlBarLayoutWatcher(() =>
@@ -366,7 +367,7 @@ public static class PlayerSettingsStore
         }
     }
 
-    /// <summary>设置根对象的序列化：缩放方式 + 控制栏行列表（每行一个 children 数组）。</summary>
+    /// <summary>设置根对象的序列化：缩放方式 + 画面手势 + 控制栏行列表（每行一个 children 数组）。</summary>
     private sealed class PlayerSettingsConverter : JsonConverter<PlayerSettings>
     {
         public override PlayerSettings Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -376,6 +377,17 @@ public static class PlayerSettingsStore
             if (root["scalingMode"] is { } mode)
             {
                 settings.ScalingMode = Enum.Parse<VideoScalingMode>(mode.GetValue<string>());
+            }
+
+            // 手势：逐项读，缺失或写坏时保留默认值（旧配置文件里没有这一段）
+            if (root["gestures"] is JsonObject gestures)
+            {
+                settings.Gestures.TapAction = ParseEnum(gestures["tap"], VideoGestureAction.ToggleControls);
+                settings.Gestures.DoubleTapAction = ParseEnum(gestures["doubleTap"], VideoGestureAction.TogglePlayPause);
+                settings.Gestures.HorizontalSwipeAdjust = ParseEnum(gestures["swipeHorizontal"], VideoSwipeAdjust.Seek);
+                settings.Gestures.LeftVerticalSwipeAdjust = ParseEnum(gestures["swipeVerticalLeft"], VideoSwipeAdjust.Brightness);
+                settings.Gestures.RightVerticalSwipeAdjust = ParseEnum(gestures["swipeVerticalRight"], VideoSwipeAdjust.Volume);
+                settings.Gestures.LiveSeekWhileSwiping = gestures["liveSeekWhileSwiping"]?.GetValue<bool>() ?? true;
             }
 
             if (root["controlBar"] is JsonArray lines)
@@ -407,6 +419,15 @@ public static class PlayerSettingsStore
             writer.WriteStartObject();
             writer.WritePropertyName("scalingMode");
             writer.WriteStringValue(value.ScalingMode.ToString());
+            writer.WritePropertyName("gestures");
+            writer.WriteStartObject();
+            writer.WriteString("tap", value.Gestures.TapAction.ToString());
+            writer.WriteString("doubleTap", value.Gestures.DoubleTapAction.ToString());
+            writer.WriteString("swipeHorizontal", value.Gestures.HorizontalSwipeAdjust.ToString());
+            writer.WriteString("swipeVerticalLeft", value.Gestures.LeftVerticalSwipeAdjust.ToString());
+            writer.WriteString("swipeVerticalRight", value.Gestures.RightVerticalSwipeAdjust.ToString());
+            writer.WriteBoolean("liveSeekWhileSwiping", value.Gestures.LiveSeekWhileSwiping);
+            writer.WriteEndObject();
             writer.WritePropertyName("controlBar");
             writer.WriteStartArray();
             foreach (var line in value.ControlBar)
@@ -420,5 +441,9 @@ public static class PlayerSettingsStore
             writer.WriteEndArray();
             writer.WriteEndObject();
         }
+
+        /// <summary>读一个枚举项（缺失或无法识别时用默认值）。</summary>
+        private static TEnum ParseEnum<TEnum>(JsonNode? node, TEnum fallback) where TEnum : struct, Enum =>
+            node is not null && Enum.TryParse<TEnum>(node.GetValue<string>(), out var parsed) ? parsed : fallback;
     }
 }

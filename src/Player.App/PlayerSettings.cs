@@ -100,13 +100,13 @@ public enum VideoSwipeAdjust
     /// <summary>不调节。</summary>
     None,
 
-    /// <summary>调整播放进度：按固定比例折算（每像素 0.25 秒），与视频区大小 / 时长无关。</summary>
+    /// <summary>调整播放进度：沿滑动方向固定比例折算（每像素 0.25 秒），与视频区大小 / 时长无关。</summary>
     Seek,
 
-    /// <summary>调整音量：纵向滑满视频区高 = 100%。</summary>
+    /// <summary>调整音量：沿滑动方向滑满视频区对应尺寸 = 100%（水平向右 / 垂直向上为加大）。</summary>
     Volume,
 
-    /// <summary>调整画面亮度：纵向滑满视频区高 = 100 个单位（mpv 取值范围 -100–100）。</summary>
+    /// <summary>调整画面亮度：沿滑动方向滑满视频区对应尺寸 = 100 个单位（mpv 取值范围 -100–100）。</summary>
     Brightness,
 }
 

@@ -163,6 +163,22 @@ public sealed class MpvMediaEngine : IMediaEngine
     /// <summary>自由缩放模式下的当前倍率（1.0 = 铺满视频区）。</summary>
     public double Scale => _scale;
 
+    /// <summary>
+    /// 当前画面相对「像素点对点」的缩放百分比：显示尺寸与画面原始像素尺寸一致时为 100%。
+    /// 自由缩放模式的提示用——1× 是「铺满视频区」，除非素材分辨率恰好等于视频区尺寸，否则它不是 100%。
+    /// 几何未知（未起播、纯音频）返回 0。
+    /// </summary>
+    public double ZoomPercent()
+    {
+        var sourceWidth = ReadInt("dwidth");
+        var sourceHeight = ReadInt("dheight");
+        var windowWidth = ReadInt("osd-dimensions/w");
+        var windowHeight = ReadInt("osd-dimensions/h");
+        var (width, _) = VideoZoomMath.ScaledSize(sourceWidth, sourceHeight, windowWidth, windowHeight, _scale);
+
+        return sourceWidth > 0 && width > 0d ? width / sourceWidth * 100d : 0d;
+    }
+
     public void ResetVideoPan()
     {
         _panX = 0d;

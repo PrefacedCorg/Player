@@ -34,6 +34,9 @@ public partial class VolumeControl : UserControl
     /// <summary>正在拖动滑块（防抖）：期间只刷新显示不下发引擎/系统，松手才提交。</summary>
     private bool _dragging;
 
+    /// <summary>已订阅的 ViewModel（Loaded 时记下，卸载时按同一引用退订）。</summary>
+    private MainWindowViewModel? _subscribedVm;
+
     private VolumeControlSettings Settings => _item.Settings as VolumeControlSettings ?? new VolumeControlSettings();
 
     private MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
@@ -75,6 +78,13 @@ public partial class VolumeControl : UserControl
         }
 
         Settings.PropertyChanged += OnSettingsChanged;
+        // 画面手势 / 键盘快捷键也会改播放音量：跟随刷新显示（订阅放在初值整理之后，避免误触发）
+        _subscribedVm = Vm;
+        if (_subscribedVm is { } subscribed)
+        {
+            subscribed.PropertyChanged += OnViewModelPropertyChanged;
+        }
+
         RefreshUi();
         SyncDisplay();
     }
@@ -82,6 +92,12 @@ public partial class VolumeControl : UserControl
     private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
         Settings.PropertyChanged -= OnSettingsChanged;
+        if (_subscribedVm is { } vm)
+        {
+            vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedVm = null;
+        }
+
         SystemVolumeService.Changed -= OnSystemVolumeChanged;
         SystemVolumeService.StopPolling();
     }
@@ -171,12 +187,34 @@ public partial class VolumeControl : UserControl
             return;
         }
 
-        _value = system;
+        // 先同步软件侧再落到系统值：顺序反了，vm.Volume=100 的通知会把显示停回 100
         if (Vm is { } vm)
         {
             vm.Volume = 100d;
         }
 
+        _value = system;
+        SyncDisplay();
+    }
+
+    /// <summary>
+    /// 外部改了播放音量（画面手势 / 键盘快捷键）：跟随刷新显示——滑块与数字都要动，
+    /// 否则看起来就像"调音量没生效"。用户正在拖滑块或系统音量正在跟随（_dragging）时不打扰。
+    /// </summary>
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.Volume) || _dragging || _syncing)
+        {
+            return;
+        }
+
+        var volume = Math.Clamp(Vm?.Volume ?? _value, 0d, 200d);
+        if (Math.Abs(volume - _value) < 0.01d)
+        {
+            return;
+        }
+
+        _value = volume;
         SyncDisplay();
     }
 

@@ -43,7 +43,7 @@
     </ui:FASettingsExpander>
 
     <ui:FASettingsExpander Header="左右滑动"
-                           Description="滑多少跳多少：4 像素 = 1 秒（与视频区大小、视频时长无关），拖动时画面中央显示调整后的位置，抬手时跳转">
+                           Description="三种调节都能配：进度沿滑动方向 4 像素 = 1 秒（与视频区大小、时长无关），音量 / 亮度滑满视频区宽 = 100 个单位；向右为加大">
       <ui:FASettingsExpander.Footer>
         <ComboBox ItemsSource="{Binding AdjustOptions}"
                   SelectedItem="{Binding Gestures.HorizontalSwipeAdjustOption, Mode=TwoWay}">
@@ -57,14 +57,14 @@
     </ui:FASettingsExpander>
 
     <ui:FASettingsExpander Header="拖动时画面跟随"
-                           Description="左右滑动调整进度时，拖动过程中画面实时跟随手指（暂停预览目标位置，抬手后恢复原来的播放 / 暂停状态）">
+                           Description="任意手势配成「调整进度」时，拖动过程中画面都实时跟随手指（暂停预览目标位置，抬手后恢复原来的播放 / 暂停状态）">
       <ui:FASettingsExpander.Footer>
         <ToggleSwitch IsChecked="{Binding Gestures.LiveSeekWhileSwiping, Mode=TwoWay}" OnContent="开" OffContent="关" />
       </ui:FASettingsExpander.Footer>
     </ui:FASettingsExpander>
 
     <ui:FASettingsExpander Header="左半区上下滑动"
-                           Description="滑多少调多少：在画面左半边上下滑动，纵向滑满视频区高 = 100 个单位，往上加大">
+                           Description="三种调节都能配：往上滑为加大，进度 4 像素 = 1 秒，音量 / 亮度滑满视频区高 = 100 个单位">
       <ui:FASettingsExpander.Footer>
         <ComboBox ItemsSource="{Binding AdjustOptions}"
                   SelectedItem="{Binding Gestures.LeftVerticalSwipeAdjustOption, Mode=TwoWay}">
@@ -78,7 +78,7 @@
     </ui:FASettingsExpander>
 
     <ui:FASettingsExpander Header="右半区上下滑动"
-                           Description="滑多少调多少：在画面右半边上下滑动，纵向滑满视频区高 = 100 个单位，往上加大">
+                           Description="三种调节都能配：往上滑为加大，进度 4 像素 = 1 秒，音量 / 亮度滑满视频区高 = 100 个单位">
       <ui:FASettingsExpander.Footer>
         <ComboBox ItemsSource="{Binding AdjustOptions}"
                   SelectedItem="{Binding Gestures.RightVerticalSwipeAdjustOption, Mode=TwoWay}">

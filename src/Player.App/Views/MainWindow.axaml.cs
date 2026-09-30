@@ -22,10 +22,10 @@ public partial class MainWindow : Window
     /// <summary>音量上限：与引擎侧一致（mpv volume-max 已放宽到 200）。</summary>
     private const double GestureVolumeMax = 200d;
 
-    /// <summary>纵向滑动调节滑满视频区一整个高对应的量程：音量 / 亮度是 100。</summary>
+    /// <summary>音量 / 亮度滑满视频区对应方向的整个尺寸（水平宽 / 垂直高）对应的量程：100 个单位。</summary>
     private const double DragFullRange = 100d;
 
-    /// <summary>左右滑动调进度的固定比例：4 像素 = 1 秒，与视频区大小、视频时长都无关。</summary>
+    /// <summary>滑动调进度的固定比例：沿滑动方向 4 像素 = 1 秒，与视频区大小、视频时长都无关。</summary>
     private const double DragSeekSecondsPerPixel = 0.25d;
 
     /// <summary>滑动过程中下发的步进：与上一次下发的值相差不到它就先攒着。</summary>
@@ -41,6 +41,9 @@ public partial class MainWindow : Window
     /// <summary>本次拖动的累计位移（DIP）。</summary>
     private Point _dragTotal;
 
+    /// <summary>本次拖动锁定的方向：位移一律按这个轴折算（与配的是什么调节无关）。</summary>
+    private VideoDragAxis _dragAxis;
+
     /// <summary>调节的基准值（拖动开始时的进度 / 音量 / 亮度），全程以它为基准加位移比例。</summary>
     private double _dragBaseValue;
 
@@ -54,6 +57,9 @@ public partial class MainWindow : Window
     private bool _rendererSwitchReady;
 
     private readonly DispatcherTimer _overlaySyncTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+
+    /// <summary>捏合 / 滚轮缩放结束后隐藏中央「缩放 x%」提示：最后一次缩放后 900ms 内没有新事件才隐藏。</summary>
+    private readonly DispatcherTimer _zoomHintTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
     private VideoTouchOverlay? _touchOverlay;
     private SettingsWindow? _settingsWindow;
 
@@ -80,6 +86,16 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
 
         _overlaySyncTimer.Tick += (_, _) => SyncOverlayBounds();
+
+        // 缩放提示的自动隐藏：正在滑动调节时不动它（那是滑动自己的提示，抬手时统一隐藏）
+        _zoomHintTimer.Tick += (_, _) =>
+        {
+            _zoomHintTimer.Stop();
+            if (_dragAdjust == VideoSwipeAdjust.None)
+            {
+                _touchOverlay?.HideCenterHint();
+            }
+        };
 
         // 控制栏已组件化：渲染器控件只改 ViewModel.Renderer，真正切换渲染视图（重建 mpv 上下文、
         // 同步触摸层）在这里统一处理。事件参数类型全名限定是因为 LibMpv 也有同名类型。
@@ -255,6 +271,7 @@ public partial class MainWindow : Window
         _dragAdjust = VideoSwipeAdjust.None;
         _dragTotal = default;
         _dragAppliedValue = double.NaN;
+        _dragAxis = e.Axis;
 
         if (_settings.ScalingMode is VideoScalingMode.Original or VideoScalingMode.Free)
         {
@@ -290,12 +307,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// 滑动过程：位移按比例折算后加到基准值上——
-    /// 横向是固定比例（每像素 <see cref="DragSeekSecondsPerPixel"/> 秒，与视频区宽 / 时长无关），
-    /// 纵向滑满视频区高 = 音量 / 亮度的 100 个单位。
-    /// 音量与亮度边滑边下发（有听觉 / 画面反馈）；进度在画面中央显示目标位置，
-    /// 并累积位移抬手时再跳一次——开「拖动时画面跟随」时拖动过程中也连续跳（内部节流，
-    /// 避免狂发 seek 把播放打顿），关掉就只在抬手时跳。
+    /// 滑动过程：位移按锁定轴折算后加到基准值上——进度是固定比例（每像素 <see cref="DragSeekSecondsPerPixel"/> 秒，
+    /// 与视频区大小 / 时长无关），音量 / 亮度是「滑满视频区对应方向的尺寸 = 100 个单位」。
+    /// 三种调节配到任意手势上都按同一套算，且统一成「水平向右 / 垂直向上 = 加大」，
+    /// 因此左右 / 左上下 / 右上下怎么配都能调，不受拖动方向限制。
+    /// 三种调节都在画面中央实时显示当前值：进度是「目标位置 / 总时长」，音量 / 亮度是当前数值。
+    /// 进度累积位移抬手时再跳一次——开「拖动时画面跟随」时拖动过程中也连续跳，关掉就只在抬手时跳。
     /// </summary>
     private void OnVideoDragged(object? sender, Point delta)
     {
@@ -308,25 +325,30 @@ public partial class MainWindow : Window
         }
 
         _dragTotal += delta;
-        var height = Math.Max(1d, _touchOverlay?.Bounds.Height ?? 0d);
+
+        // 沿锁定轴的有向位移（正 = 加大：水平向右、垂直向上）与对应方向的视频区尺寸
+        var progress = _dragAxis == VideoDragAxis.Horizontal ? _dragTotal.X : -_dragTotal.Y;
+        var extent = Math.Max(1d, _dragAxis == VideoDragAxis.Horizontal
+            ? _touchOverlay?.Bounds.Width ?? 0d
+            : _touchOverlay?.Bounds.Height ?? 0d);
 
         switch (_dragAdjust)
         {
             case VideoSwipeAdjust.Seek:
-                var target = _dragBaseValue + _dragTotal.X * DragSeekSecondsPerPixel;
+                var target = _dragBaseValue + progress * DragSeekSecondsPerPixel;
                 _touchOverlay?.ShowCenterHint(DescribeSeekHint(target));
-                // 「拖动时画面跟随」开启时边拖边跳（内部按间隔节流）；关闭时为空操作，抬手才跳
+                // 「拖动时画面跟随」开启时边拖边跳；关闭时为空操作，抬手才跳
                 _viewModel.PreviewSeek(target);
                 break;
             case VideoSwipeAdjust.Volume:
-                ApplyDragValue(
-                    _dragBaseValue - _dragTotal.Y / height * DragFullRange,
-                    value => _viewModel.Volume = Math.Clamp(value, 0d, GestureVolumeMax));
+                var volume = Math.Clamp(_dragBaseValue + progress / extent * DragFullRange, 0d, GestureVolumeMax);
+                _touchOverlay?.ShowCenterHint($"音量 {volume:F0}%");
+                ApplyDragValue(volume, value => _viewModel.Volume = value);
                 break;
             case VideoSwipeAdjust.Brightness:
-                ApplyDragValue(
-                    _dragBaseValue - _dragTotal.Y / height * DragFullRange,
-                    value => _viewModel.Brightness = Math.Clamp(value, -DragFullRange, DragFullRange));
+                var brightness = Math.Clamp(_dragBaseValue + progress / extent * DragFullRange, -DragFullRange, DragFullRange);
+                _touchOverlay?.ShowCenterHint($"亮度 {brightness:F0}");
+                ApplyDragValue(brightness, value => _viewModel.Brightness = value);
                 break;
         }
     }
@@ -417,8 +439,10 @@ public partial class MainWindow : Window
 
         if (_dragAdjust == VideoSwipeAdjust.Seek)
         {
-            var target = Math.Clamp(_dragBaseValue + total.X * DragSeekSecondsPerPixel, 0d, _viewModel.DurationSeconds);
-            StartupTrace.Mark($"画面横向滑动 {total.X:F0} px → 跳转到 {target:F1}s");
+            // 抬手位置同样按锁定轴折算，和拖动过程用的是同一套（垂直手势配进度时向上为正）
+            var progress = _dragAxis == VideoDragAxis.Horizontal ? total.X : -total.Y;
+            var target = Math.Clamp(_dragBaseValue + progress * DragSeekSecondsPerPixel, 0d, _viewModel.DurationSeconds);
+            StartupTrace.Mark($"画面{(_dragAxis == VideoDragAxis.Horizontal ? "横向" : "纵向")}滑动 {progress:F0} px → 跳转到 {target:F1}s");
             _viewModel.EndSeekPreview(target);
         }
 
@@ -427,7 +451,28 @@ public partial class MainWindow : Window
         _dragAppliedValue = double.NaN;
     }
 
-    /// <summary>捏合或滚轮缩放（仅自由缩放模式生效）。</summary>
-    private void OnVideoZoomRequested(object? sender, double factor) =>
+    /// <summary>
+    /// 捏合或滚轮缩放：自由缩放模式下应用倍率，并在画面中央显示「缩放 x%」——
+    /// 以「像素点对点」为 100%（显示尺寸 = 画面原始像素），因此铺满视频区的 1× 不一定是 100%。
+    /// 其余模式下引擎会忽略缩放，这里也就不显示提示。
+    /// </summary>
+    private void OnVideoZoomRequested(object? sender, double factor)
+    {
+        if (_settings.ScalingMode != VideoScalingMode.Free)
+        {
+            return;
+        }
+
         _viewModel.ZoomVideo(factor);
+        var percent = _viewModel.ZoomPercent;
+        if (percent <= 0d)
+        {
+            return;
+        }
+
+        _touchOverlay?.ShowCenterHint($"缩放 {percent:F0}%");
+        // 停止缩放（手指抬起 / 滚轮停下）后 900ms 内没有新事件才自动隐藏
+        _zoomHintTimer.Stop();
+        _zoomHintTimer.Start();
+    }
 }

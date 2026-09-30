@@ -50,12 +50,12 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>预览开始时是否在播放：抬手后要恢复（本来暂停的就保持暂停）。</summary>
     private bool _resumeAfterPreview;
 
-    /// <summary>最近一次预览 seek 的时间（拖动中事件很密，按间隔节流）。</summary>
-    private DateTime _lastPreviewSeekAt = DateTime.MinValue;
-
-    /// <summary>预览 seek 的最小间隔：当前为 0 = 不节流（拖动中每个位移都下发，最跟手；
-    /// 若画面打顿就把它调大，如 100ms 约等于 10 次/秒）。</summary>
-    private static readonly TimeSpan PreviewSeekInterval = TimeSpan.Zero;
+    // 拖动预览的 seek 节流（当前不需要：实测不卡。mpv 对 seek 是后来者优先，不会堆积；
+    // 若将来遇到重负载素材预览打顿，把下面两行恢复并把间隔调成 30–100ms 即可）：
+    // /// <summary>最近一次预览 seek 的时间（拖动中事件很密，按间隔节流）。</summary>
+    // private DateTime _lastPreviewSeekAt = DateTime.MinValue;
+    // /// <summary>预览 seek 的最小间隔（如 100ms ≈ 10 次/秒）。</summary>
+    // private static readonly TimeSpan PreviewSeekInterval = TimeSpan.FromMilliseconds(100);
 
     /// <summary>C# 侧播放队列（不依赖 mpv 内部播放列表：循环/随机的决策在 UI 侧完成）。</summary>
     private readonly List<MediaItem> _queue = [];
@@ -174,6 +174,12 @@ public partial class MainWindowViewModel : ObservableObject
     /// 捏合过程中会连续调用，因此不在这里打日志——倍率会出现在拖动结束与心跳的几何快照里。
     /// </summary>
     public void ZoomVideo(double factor) => _engine?.ZoomVideo(factor);
+
+    /// <summary>
+    /// 自由缩放模式下画面相对「像素点对点」（100%）的缩放百分比；几何未知返回 0。
+    /// 用于捏合 / 滚轮缩放时的中央提示。
+    /// </summary>
+    public double ZoomPercent => _engine?.ZoomPercent() ?? 0d;
 
     /// <summary>
     /// 一次拖动结束：记录本次累计位移与 mpv 回读的平移量。
@@ -490,7 +496,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         _previewing = true;
-        _lastPreviewSeekAt = DateTime.MinValue;
         _resumeAfterPreview = !_engine.State.IsPaused;
         if (_resumeAfterPreview)
         {
@@ -498,7 +503,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    /// <summary>拖动过程中更新预览位置（节流：约 10 次/秒，再密只会有更多中间帧被丢弃）。</summary>
+    /// <summary>拖动过程中更新预览位置（不节流：每个位移都下发，画面最跟手）。</summary>
     public void PreviewSeek(double seconds)
     {
         if (!_previewing || _engine is null)
@@ -506,13 +511,12 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var now = DateTime.UtcNow;
-        if (now - _lastPreviewSeekAt < PreviewSeekInterval)
-        {
-            return;
-        }
+        // 节流（约 10 次/秒）已注释掉：实测不卡，且 mpv 对 seek 是后来者优先，不会堆积。
+        // 恢复时把上面的字段一起放开：
+        // var now = DateTime.UtcNow;
+        // if (now - _lastPreviewSeekAt < PreviewSeekInterval) { return; }
+        // _lastPreviewSeekAt = now;
 
-        _lastPreviewSeekAt = now;
         SeekTo(seconds);
     }
 

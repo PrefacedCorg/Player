@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Player.Playback;
@@ -42,6 +43,10 @@ public sealed class VideoDragStartedEventArgs(Point start, VideoDragAxis axis) :
 /// 两指按下即进入捏合，上报倍率增量与中点位移（捏合时同时可以拖）。
 /// 点按在抬起时才上报——按下即上报的话，就无法把它和"按住后开始拖"区分开。
 /// </para>
+/// <para>
+/// 它同时是悬浮控制栏的宿主（设置里开启「悬浮在视频上」时）：控制栏由主窗口注入、贴底显示，
+/// 位于手势判定层之上——控制栏可见时，其上的操作不会进入画面手势判定。
+/// </para>
 /// </summary>
 public sealed class VideoTouchOverlay : Window
 {
@@ -81,8 +86,29 @@ public sealed class VideoTouchOverlay : Window
     /// <summary>右下角「恢复亮度」被点击：请求把亮度复位为 0。</summary>
     public event EventHandler? BrightnessRestoreRequested;
 
+    /// <summary>
+    /// 触摸层上的指针活动（按下 / 抬起 / 移动 / 滚轮，含悬浮控制栏上的操作）。
+    /// 用于「无操作 N 秒自动隐藏」重新计时；参数为指针类型（触摸 / 笔 / 鼠标，由上层决定各自怎么处理）。
+    /// </summary>
+    public event EventHandler<PointerType>? ActivityDetected;
+
+    /// <summary>
+    /// 鼠标（未按下的悬浮移动）在视频区移动（参数为相对视频区左上角的位置）：
+    /// 「鼠标支持」开启时用来自动呼出控制栏；上层按位移阈值判断算不算真的「移动了一下」。
+    /// </summary>
+    public event EventHandler<Point>? MouseMoved;
+
+    /// <summary>鼠标进入悬浮控制栏：「鼠标支持」开启时悬停期间不自动隐藏。</summary>
+    public event EventHandler? ControlBarMouseEntered;
+
+    /// <summary>鼠标离开悬浮控制栏：重新开始自动隐藏倒计时。</summary>
+    public event EventHandler? ControlBarMouseExited;
+
     /// <summary>提示气泡的底色：半透明黑，压在画面上也看得清。</summary>
     private static readonly IBrush HintBackground = new SolidColorBrush(Color.FromArgb(0xC0, 0, 0, 0));
+
+    /// <summary>悬浮控制栏的底色：半透明深色（与停靠控制栏同色系，透出后面的画面）。</summary>
+    private static readonly IBrush ControlBarBackground = new SolidColorBrush(Color.FromArgb(0xCC, 0x1B, 0x1B, 0x22));
 
     private readonly Panel _surface;
 
@@ -94,6 +120,15 @@ public sealed class VideoTouchOverlay : Window
 
     /// <summary>右下角「恢复亮度」提示：亮度 ≠ 0 时显示，点击复位。</summary>
     private readonly Border _brightnessHint;
+
+    /// <summary>
+    /// 悬浮控制栏的宿主：贴视频区底部的半透明容器，内容由主窗口注入（见 <see cref="SetControlBar"/>）。
+    /// 位于 _surface 之上，因此控制栏可见时它上面的触摸 / 点击不会进入画面手势判定。
+    /// </summary>
+    private readonly Border _controlBarHost;
+
+    /// <summary>悬浮控制栏的显示状态（由主窗口按设置同步；没注入内容前一律不显示）。</summary>
+    private bool _controlBarVisible;
 
     /// <summary>单击延迟上报的定时器：等过了双击间隔没有第二下，才确认这是一次单击。</summary>
     private readonly DispatcherTimer _singleTapTimer = new() { Interval = DoubleTapMaxDelay };
@@ -166,8 +201,54 @@ public sealed class VideoTouchOverlay : Window
         };
         _brightnessHint.PointerPressed += OnBrightnessHintPressed;
 
-        Content = new Grid { Children = { _surface, _centerHint, _brightnessHint } };
+        // 悬浮控制栏宿主：只负责半透明外观与显隐；内容的窗口级按钮（全屏 / 设置等）靠 Owner
+        // 找回主窗口（见 Assists/MainWindowLocator）。事件都按指针类型分流：鼠标 → 悬停 / 移动
+        // 相关的「鼠标支持」，触摸 / 笔 → 触摸层活动（自动隐藏重新计时）。
+        _controlBarHost = new Border
+        {
+            Background = ControlBarBackground,
+            Padding = new Thickness(12, 8),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+            IsVisible = false,
+        };
+        _controlBarHost.PointerEntered += OnControlBarPointerEntered;
+        _controlBarHost.PointerExited += OnControlBarPointerExited;
+        _controlBarHost.PointerMoved += OnControlBarPointerMoved;
+        // 控制栏里的按钮会把按下事件标记为已处理，活动统计仍要收到（handledEventsToo）
+        _controlBarHost.AddHandler(PointerPressedEvent, OnControlBarPointerPressed,
+            RoutingStrategies.Bubble, handledEventsToo: true);
+
+        Content = new Grid { Children = { _surface, _centerHint, _brightnessHint, _controlBarHost } };
     }
+
+    /// <summary>
+    /// 注入悬浮控制栏的内容（当前形态为悬浮时由主窗口创建一次，控件实例与停靠栏各自独立）。
+    /// 这里只负责宿主的显隐与命中；内容的显隐状态随后由 <see cref="SetControlBarVisible"/> 同步。
+    /// </summary>
+    public void SetControlBar(Control? content)
+    {
+        _controlBarHost.Child = content;
+        UpdateControlBarVisibility();
+    }
+
+    /// <summary>悬浮控制栏显隐（来自主窗口对「悬浮形态 + 控制栏可见」两个条件的合成结果）。</summary>
+    public void SetControlBarVisible(bool visible)
+    {
+        _controlBarVisible = visible;
+        UpdateControlBarVisibility();
+    }
+
+    /// <summary>
+    /// 悬浮控制栏的底部圆角（DIP）：主窗口（Win11）四角是圆角，悬浮栏贴窗口底边，
+    /// 底部两角得跟着圆，才不会"突出"到窗口圆角外面；直角系统 / 最大化 / 全屏下传 0。
+    /// 顶部两角始终是直角（完整宽度的一条，压在画面下沿）。
+    /// </summary>
+    public void SetControlBarCornerRadius(double radius) =>
+        _controlBarHost.CornerRadius = new CornerRadius(0d, 0d, radius, radius);
+
+    /// <summary>没注入内容（当前不是悬浮形态 / 触摸层刚重建）时一律不显示，避免出现一条空底色。</summary>
+    private void UpdateControlBarVisibility() =>
+        _controlBarHost.IsVisible = _controlBarVisible && _controlBarHost.Child is not null;
 
     /// <summary>在视频区中央显示一行提示（滑动调进度时的「目标位置 / 总时长」）。</summary>
     public void ShowCenterHint(string text)
@@ -189,10 +270,53 @@ public sealed class VideoTouchOverlay : Window
         BrightnessRestoreRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>指针进入悬浮控制栏：只上报鼠标（悬停抑制是「鼠标支持」的能力，触摸 / 笔不参与）。</summary>
+    private void OnControlBarPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (e.Pointer.Type == PointerType.Mouse)
+        {
+            ControlBarMouseEntered?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>指针离开悬浮控制栏。</summary>
+    private void OnControlBarPointerExited(object? sender, PointerEventArgs e)
+    {
+        if (e.Pointer.Type == PointerType.Mouse)
+        {
+            ControlBarMouseExited?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// 指针在悬浮控制栏上移动：鼠标按「悬停」再次上报（设置切换后不必移出再移入就能生效）；
+    /// 触摸 / 笔按活动上报（在控制栏上拖动滑块时，不能让自动隐藏倒计时把控制栏收走）。
+    /// </summary>
+    private void OnControlBarPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (e.Pointer.Type == PointerType.Mouse)
+        {
+            ControlBarMouseEntered?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        if (e.Pointer.Type is PointerType.Touch or PointerType.Pen)
+        {
+            ActivityDetected?.Invoke(this, e.Pointer.Type);
+        }
+    }
+
+    /// <summary>悬浮控制栏上的按下：计入触摸层活动（按钮已把事件标记为已处理，这里靠 handledEventsToo 收到）。</summary>
+    private void OnControlBarPointerPressed(object? sender, PointerPressedEventArgs e) =>
+        ActivityDetected?.Invoke(this, e.Pointer.Type);
+
     private void OnSurfacePointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var position = e.GetPosition(_surface);
         _pointers[e.Pointer.Id] = position;
+
+        // 按下即算活动：自动隐藏倒计时重新开始（按住不动时倒计时到点仍会收起，属预期）
+        ActivityDetected?.Invoke(this, e.Pointer.Type);
 
         // 捕获指针：手指滑出视频区边缘后仍能收到移动与抬起事件
         e.Pointer.Capture(_surface);
@@ -222,11 +346,23 @@ public sealed class VideoTouchOverlay : Window
     {
         if (!_pointers.ContainsKey(e.Pointer.Id))
         {
+            // 未按下的悬浮移动：鼠标在「鼠标支持」下自动呼出控制栏（触摸 / 笔没有悬浮态，不参与）
+            if (e.Pointer.Type == PointerType.Mouse)
+            {
+                MouseMoved?.Invoke(this, e.GetPosition(_surface));
+            }
+
             return;
         }
 
         var position = e.GetPosition(_surface);
         _pointers[e.Pointer.Id] = position;
+
+        // 触摸 / 笔的移动也算活动：触摸操作期间自动隐藏倒计时不能把控制栏收走（触屏优先）
+        if (e.Pointer.Type is PointerType.Touch or PointerType.Pen)
+        {
+            ActivityDetected?.Invoke(this, e.Pointer.Type);
+        }
 
         if (_pinching && _pointers.Count >= 2)
         {
@@ -300,6 +436,7 @@ public sealed class VideoTouchOverlay : Window
     private void OnSurfacePointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         _pointers.Remove(e.Pointer.Id);
+        ActivityDetected?.Invoke(this, e.Pointer.Type);
 
         if (_pinching)
         {
@@ -375,6 +512,8 @@ public sealed class VideoTouchOverlay : Window
         {
             return;
         }
+
+        ActivityDetected?.Invoke(this, e.Pointer.Type);
 
         // 向上滚 = 放大。带小数的格数（触控板/高精度滚轮）也能连续缩放
         VideoZoomRequested?.Invoke(this, Math.Pow(WheelStep, e.Delta.Y));

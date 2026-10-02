@@ -87,6 +87,7 @@ public static class PlayerSettingsStore
         _attached = settings;
         settings.PropertyChanged += OnItemChanged;
         settings.Gestures.PropertyChanged += OnItemChanged;
+        settings.ControlBarBehavior.PropertyChanged += OnItemChanged;
 
         ControlBarLayoutWatcher? watcher = null;
         watcher = new ControlBarLayoutWatcher(() =>
@@ -367,7 +368,7 @@ public static class PlayerSettingsStore
         }
     }
 
-    /// <summary>设置根对象的序列化：缩放方式 + 画面手势 + 控制栏行列表（每行一个 children 数组）。</summary>
+    /// <summary>设置根对象的序列化：缩放方式 + 画面手势 + 悬浮控制栏行为 + 控制栏行列表（每行一个 children 数组）。</summary>
     private sealed class PlayerSettingsConverter : JsonConverter<PlayerSettings>
     {
         public override PlayerSettings Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -388,6 +389,17 @@ public static class PlayerSettingsStore
                 settings.Gestures.LeftVerticalSwipeAdjust = ParseEnum(gestures["swipeVerticalLeft"], VideoSwipeAdjust.Brightness);
                 settings.Gestures.RightVerticalSwipeAdjust = ParseEnum(gestures["swipeVerticalRight"], VideoSwipeAdjust.Volume);
                 settings.Gestures.LiveSeekWhileSwiping = gestures["liveSeekWhileSwiping"]?.GetValue<bool>() ?? true;
+            }
+
+            // 悬浮控制栏行为：逐项读，缺失或写坏时保留默认值（旧配置文件里没有这一段）。
+            // 旧版的 overlayOnVideo（一个开关管两种模式）不再读取：显示方式改成窗口 / 全屏分开设置后，
+            // 各自的默认值更贴近预期（窗口底部、全屏悬浮），旧键由下一次保存自然淘汰。
+            if (root["controlBarBehavior"] is JsonObject behavior)
+            {
+                settings.ControlBarBehavior.OverlayInWindowed = behavior["overlayInWindowed"]?.GetValue<bool>() ?? false;
+                settings.ControlBarBehavior.OverlayInFullscreen = behavior["overlayInFullscreen"]?.GetValue<bool>() ?? true;
+                settings.ControlBarBehavior.AutoHideSeconds = behavior["autoHideSeconds"]?.GetValue<double>() ?? 5d;
+                settings.ControlBarBehavior.MouseSupport = behavior["mouseSupport"]?.GetValue<bool>() ?? true;
             }
 
             if (root["controlBar"] is JsonArray lines)
@@ -427,6 +439,13 @@ public static class PlayerSettingsStore
             writer.WriteString("swipeVerticalLeft", value.Gestures.LeftVerticalSwipeAdjust.ToString());
             writer.WriteString("swipeVerticalRight", value.Gestures.RightVerticalSwipeAdjust.ToString());
             writer.WriteBoolean("liveSeekWhileSwiping", value.Gestures.LiveSeekWhileSwiping);
+            writer.WriteEndObject();
+            writer.WritePropertyName("controlBarBehavior");
+            writer.WriteStartObject();
+            writer.WriteBoolean("overlayInWindowed", value.ControlBarBehavior.OverlayInWindowed);
+            writer.WriteBoolean("overlayInFullscreen", value.ControlBarBehavior.OverlayInFullscreen);
+            writer.WriteNumber("autoHideSeconds", value.ControlBarBehavior.AutoHideSeconds);
+            writer.WriteBoolean("mouseSupport", value.ControlBarBehavior.MouseSupport);
             writer.WriteEndObject();
             writer.WritePropertyName("controlBar");
             writer.WriteStartArray();

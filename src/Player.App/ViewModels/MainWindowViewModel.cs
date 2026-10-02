@@ -123,6 +123,15 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isControlBarVisible = true;
 
+    /// <summary>当前窗口状态下控制栏是否悬浮（「窗口 / 全屏」两处独立设置按是否全屏合成，进出全屏即变）。</summary>
+    public bool IsOverlayControlBarActive => _settings.ControlBarBehavior.UsesOverlay(IsFullscreen);
+
+    /// <summary>停靠控制栏（视频下方）是否可见：当前形态为悬浮时改由触摸层里的悬浮栏显示，停靠栏整体不出现。</summary>
+    public bool IsDockedControlBarVisible => !IsOverlayControlBarActive && IsControlBarVisible;
+
+    /// <summary>悬浮控制栏（视频区域上）是否可见：当前形态为悬浮且控制栏处于「显示」状态。</summary>
+    public bool IsOverlayControlBarVisible => IsOverlayControlBarActive && IsControlBarVisible;
+
     public MainWindowViewModel(PlayerSettings settings, IReadOnlyList<string>? startupFiles = null)
     {
         _settings = settings;
@@ -130,6 +139,9 @@ public partial class MainWindowViewModel : ObservableObject
 
         // 设置窗口与主窗口共用同一个 PlayerSettings 实例，改动在这里即时下发到引擎
         _settings.PropertyChanged += OnSettingsChanged;
+
+        // 悬浮控制栏行为是独立设置对象，单独订阅（决定停靠栏 / 悬浮栏的合成显隐）
+        _settings.ControlBarBehavior.PropertyChanged += OnControlBarBehaviorChanged;
 
         // 诊断走独立定时器，不依赖播放状态变化：暂停或位置不推进时也要能取到硬解信息
         _diagnosticsTimer.Tick += (_, _) => RunDiagnostics();
@@ -149,6 +161,24 @@ public partial class MainWindowViewModel : ObservableObject
         {
             ApplyScalingMode();
         }
+    }
+
+    /// <summary>悬浮控制栏行为变化：停靠栏 / 悬浮栏的合成显隐要重新求值（视图与触摸层跟着切换）。</summary>
+    private void OnControlBarBehaviorChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ControlBarBehaviorSettings.OverlayInWindowed)
+            or nameof(ControlBarBehaviorSettings.OverlayInFullscreen))
+        {
+            RaiseControlBarModeChanged();
+        }
+    }
+
+    /// <summary>控制栏显示形态相关属性一起通知：悬浮判定变了，停靠栏与悬浮栏的显隐都要重算。</summary>
+    private void RaiseControlBarModeChanged()
+    {
+        OnPropertyChanged(nameof(IsOverlayControlBarActive));
+        OnPropertyChanged(nameof(IsDockedControlBarVisible));
+        OnPropertyChanged(nameof(IsOverlayControlBarVisible));
     }
 
     /// <summary>把当前缩放方式下发给引擎，并把 mpv 的回读值写进日志，便于确认属性真的生效。</summary>
@@ -362,7 +392,12 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    partial void OnIsFullscreenChanged(bool value) => FullscreenText = value ? "退出全屏" : "全屏";
+    partial void OnIsFullscreenChanged(bool value)
+    {
+        FullscreenText = value ? "退出全屏" : "全屏";
+        // 窗口与全屏的显示方式分开设置：进出全屏可能整体换一种形态，显隐相关属性要重算
+        RaiseControlBarModeChanged();
+    }
 
     /// <summary>
     /// 引擎回报「当前文件播完」（轮询线程上来，切回 UI 线程）：
@@ -450,6 +485,13 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>呼出 / 收起控制层（画面单击手势的默认操作，见 <see cref="VideoGestureSettings"/>）。</summary>
     public void ToggleControlBar() => IsControlBarVisible = !IsControlBarVisible;
+
+    /// <summary>控制栏显隐变化：停靠栏与悬浮栏的合成显隐都跟着变（停靠栏走绑定，悬浮栏由主窗口同步到触摸层）。</summary>
+    partial void OnIsControlBarVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsDockedControlBarVisible));
+        OnPropertyChanged(nameof(IsOverlayControlBarVisible));
+    }
 
     /// <summary>
     /// 进度条开始拖动。<paramref name="preview"/> 来自进度条组件设置「拖动时预览画面」：

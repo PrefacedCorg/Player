@@ -158,6 +158,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -166,17 +167,50 @@
             <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0"/>
         </StackPanel>
 
-        <!-- ROW 1 说明 -->
-        <TextBlock Grid.Row="1"
+        <!-- ROW 1 悬浮控制栏：显示方式（窗口 / 全屏分开设置）、自动隐藏与鼠标支持（绑定共享设置上的
+             ControlBarBehavior，改完即生效） -->
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0 0 0 16">
+            <ui:FASettingsExpander Header="窗口模式下的控制栏"
+                                   Description="底部 = 固定在窗口下沿（默认）；悬浮 = 半透明叠在视频上，点一下画面呼出 / 收起（悬浮栏挂在视频上方的触摸层窗口里，只在 Native 渲染器下出现）">
+                <ui:FASettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding Behavior.OverlayInWindowed, Mode=TwoWay}" OnContent="悬浮" OffContent="底部" />
+                </ui:FASettingsExpander.Footer>
+            </ui:FASettingsExpander>
+
+            <ui:FASettingsExpander Header="全屏模式下的控制栏"
+                                   Description="悬浮 = 叠在视频上（默认，可自动隐藏）；底部 = 固定在屏幕下沿">
+                <ui:FASettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding Behavior.OverlayInFullscreen, Mode=TwoWay}" OnContent="悬浮" OffContent="底部" />
+                </ui:FASettingsExpander.Footer>
+            </ui:FASettingsExpander>
+
+            <ui:FASettingsExpander Header="自动隐藏"
+                                   Description="悬浮显示时无操作这么多秒后自动收起控制栏（0 = 不自动隐藏；点画面重新呼出，鼠标停在控制栏上时不计时）">
+                <ui:FASettingsExpander.Footer>
+                    <ui:FANumberBox Width="150" Minimum="0" Maximum="120" SmallChange="1"
+                                    Value="{Binding Behavior.AutoHideSeconds, Mode=TwoWay}" />
+                </ui:FASettingsExpander.Footer>
+            </ui:FASettingsExpander>
+
+            <ui:FASettingsExpander Header="鼠标支持"
+                                   Description="额外的鼠标手段：鼠标在视频区移动时自动呼出控制栏，停在控制栏上时不自动隐藏。触屏优先：触摸操作后短暂忽略伴随产生的鼠标事件">
+                <ui:FASettingsExpander.Footer>
+                    <ToggleSwitch IsChecked="{Binding Behavior.MouseSupport, Mode=TwoWay}" OnContent="开" OffContent="关" />
+                </ui:FASettingsExpander.Footer>
+            </ui:FASettingsExpander>
+        </StackPanel>
+
+        <!-- ROW 2 说明 -->
+        <TextBlock Grid.Row="2"
                    Text="控制栏按行显示：拖动行的手柄调整行的上下顺序，行内拖动调整控件的左右顺序，从组件库拖动控件以添加。"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Left"
                    Margin="0 0 0 8"/>
 
-        <!-- ROW 2 控制栏布局：行列表（纵向），每行 = 拖动手柄 + 行内控件横向列表 + 行操作按钮，
+        <!-- ROW 3 控制栏布局：行列表（纵向），每行 = 拖动手柄 + 行内控件横向列表 + 行操作按钮，
              照 ClassIsland-2.0 组件设置页的多行结构。行重排只允许从手柄拖（避免与行内控件拖动打架）。 -->
-        <ListBox Grid.Row="2"
+        <ListBox Grid.Row="3"
                  ItemsSource="{Binding Lines}"
                  Margin="-12 0">
             <ListBox.ItemContainerTheme>
@@ -233,8 +267,8 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- ROW 3 子组件视图：查看某个容器里的控件（ClassIsland 的“此组件的子组件”面板） -->
-        <Border Grid.Row="3"
+        <!-- ROW 4 子组件视图：查看某个容器里的控件（ClassIsland 的“此组件的子组件”面板） -->
+        <Border Grid.Row="4"
                 CornerRadius="4"
                 ClipToBounds="True"
                 IsVisible="{Binding IsComponentChildrenViewOpen}"
@@ -281,8 +315,8 @@
             </Grid>
         </Border>
 
-        <!-- ROW 4 组件库 / 组件设置 / 高级设置：与 ClassIsland 原页面同一套标签页结构 -->
-        <TabControl Grid.Row="4" Padding="0" Margin="0 16 0 0">
+        <!-- ROW 5 组件库 / 组件设置 / 高级设置：与 ClassIsland 原页面同一套标签页结构 -->
+        <TabControl Grid.Row="5" Padding="0" Margin="0 16 0 0">
             <TabItem Header="组件库">
                 <ScrollViewer Padding="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <ListBox ItemsSource="{Binding Library}"

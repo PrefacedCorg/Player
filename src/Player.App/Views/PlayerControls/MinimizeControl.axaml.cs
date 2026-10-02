@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Player.App.Assists;
 
 namespace Player.App.Views.PlayerControls;
 
@@ -8,11 +9,6 @@ public partial class MinimizeControl : UserControl
 {
     public MinimizeControl() => InitializeComponent();
 
-    private void OnClick(object? sender, RoutedEventArgs e)
-    {
-        if (TopLevel.GetTopLevel(this) is MainWindow window)
-        {
-            window.MinimizeWindow();
-        }
-    }
+    private void OnClick(object? sender, RoutedEventArgs e) =>
+        MainWindowLocator.Find(this)?.MinimizeWindow();
 }

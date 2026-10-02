@@ -11,7 +11,9 @@
         Background="#0F0F13">
 
   <!-- 布局前提：默认 Native 渲染器下视频是原生子窗口，Avalonia 控件无法叠加在视频之上，
-       因此信息与控制一律放在视频区之外的控制条里。
+       因此信息与控制默认放在视频区之外的控制条里（停靠模式）。
+       设置里开启「悬浮在视频上」后，停靠栏整体隐藏，控制栏改由视频区触摸层窗口托管
+       （半透明、可自动隐藏、支持鼠标，见 MainWindow.axaml.cs / VideoTouchOverlay）。
        控件尺寸不再逐控件覆盖，一律走 FluentAvaloniaTheme 的默认度量。 -->
   <Grid RowDefinitions="*,Auto">
 
@@ -20,7 +22,7 @@
                  Renderer="Native"
                  MpvContext="{Binding Mpv}" />
 
-    <Border Grid.Row="1" Background="#1B1B22" IsVisible="{Binding IsControlBarVisible}">
+    <Border Grid.Row="1" Background="#1B1B22" IsVisible="{Binding IsDockedControlBarVisible}">
       <!-- 控制行：控件全部组件化（Views/PlayerControls 下一个控件一个文件），行结构照 ClassIsland-2.0
            的主界面多行机制。这里只放宿主，控制栏里有几行、每行放哪些控件、按什么顺序由设置里的
            行列表决定，可在 设置 → 控制栏 里加删行、调整顺序，改完立即重建。

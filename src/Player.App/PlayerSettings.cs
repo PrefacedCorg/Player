@@ -30,6 +30,44 @@ public partial class PlayerSettings : ObservableObject
     /// 主窗口在触摸层事件里执行手势时直接读这份设置，设置页改完即生效。
     /// </summary>
     public VideoGestureSettings Gestures { get; } = new();
+
+    /// <summary>
+    /// 悬浮控制栏行为（叠在视频上显示 / 无操作自动隐藏 / 鼠标支持）。
+    /// 主窗口按它控制触摸层里的悬浮控制栏与倒计时，设置页改完即生效。
+    /// </summary>
+    public ControlBarBehaviorSettings ControlBarBehavior { get; } = new();
+}
+
+/// <summary>
+/// 悬浮控制栏行为：控制栏可以叠在视频区域上显示（半透明背景、点一下画面呼出 / 收起、可自动隐藏），
+/// 显示方式（悬浮还是固定底部）在「窗口模式」与「全屏模式」下分别设置——
+/// 大屏全屏常想悬浮，窗口化时通常更想固定在窗口底部。
+/// 鼠标支持是附加手段（移动呼出、停在控制栏上不隐藏），触屏优先。
+/// 悬浮栏挂在视频区触摸层的独立顶层窗口里（见 VideoTouchOverlay），因此仅在 Native 渲染器下出现。
+/// </summary>
+public partial class ControlBarBehaviorSettings : ObservableObject
+{
+    /// <summary>窗口模式下控制栏悬浮在视频区域上（false = 固定在窗口底部）。</summary>
+    [ObservableProperty]
+    private bool _overlayInWindowed;
+
+    /// <summary>全屏模式下控制栏悬浮在视频区域上（false = 固定在底部）。</summary>
+    [ObservableProperty]
+    private bool _overlayInFullscreen = true;
+
+    /// <summary>悬浮显示时无操作多少秒后自动收起控制栏（0 = 不自动隐藏）。</summary>
+    [ObservableProperty]
+    private double _autoHideSeconds = 5d;
+
+    /// <summary>
+    /// 鼠标支持：鼠标在视频区移动时自动呼出控制栏，鼠标停在控制栏上时不自动隐藏。
+    /// 触屏优先：触摸操作后一小段时间内的鼠标事件（系统会伴随触摸合成）一律忽略。
+    /// </summary>
+    [ObservableProperty]
+    private bool _mouseSupport = true;
+
+    /// <summary>当前窗口状态下控制栏是否该悬浮（全屏与窗口模式分开设置，主窗口按窗口状态取用）。</summary>
+    public bool UsesOverlay(bool isFullscreen) => isFullscreen ? OverlayInFullscreen : OverlayInWindowed;
 }
 
 /// <summary>视频区手势（单击 / 双击 / 左右滑动）可对应的操作。</summary>

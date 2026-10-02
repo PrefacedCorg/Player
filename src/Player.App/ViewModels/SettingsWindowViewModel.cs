@@ -32,5 +32,5 @@ public partial class SettingsWindowViewModel : ObservableObject
     public IReadOnlyList<SettingsPageViewModel> Pages { get; }
 
     /// <summary>底部提示：说明哪些项已经真的生效，避免把界面状态误当成已落地。</summary>
-    public string StatusHint => "画面缩放方式、画面手势与控制栏布局已接通播放器，改动即时生效；其余项仍是界面状态，尚未接入持久化。";
+    public string StatusHint => "画面缩放方式、画面手势、控制栏布局与悬浮控制栏已接通播放器，改动即时生效；其余项仍是界面状态，尚未接入持久化。";
 }

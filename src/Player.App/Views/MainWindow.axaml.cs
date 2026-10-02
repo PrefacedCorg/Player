@@ -6,6 +6,7 @@ using Avalonia.VisualTree;
 using HanumanInstitute.LibMpv.Avalonia;
 using Player.App.Assists;
 using Player.App.ViewModels;
+using Player.App.Views.PlayerControls;
 using Player.Platform;
 using Player.Playback;
 
@@ -30,6 +31,16 @@ public partial class MainWindow : Window
 
     /// <summary>滑动过程中下发的步进：与上一次下发的值相差不到它就先攒着。</summary>
     private const double DragValueStep = 0.5d;
+
+    /// <summary>触屏优先的保护期：触摸操作后这段时间内的鼠标事件一律忽略（系统会伴随触摸合成鼠标事件）。</summary>
+    private static readonly TimeSpan TouchMouseGuard = TimeSpan.FromMilliseconds(1000);
+
+    /// <summary>
+    /// 鼠标在视频区上的最小计步位移（DIP）：位移不到它不算「鼠标移动一下」。
+    /// 手搭在鼠标上的轻微抖动、系统在窗口属性被反复触碰时补发的同位置移动都落在阈值内——
+    /// 若拿这些事件去刷新倒计时，鼠标停在视频区上时控制栏就永远收不起来。
+    /// </summary>
+    private const double MouseMoveThreshold = 8d;
 
     private readonly MainWindowViewModel _viewModel;
 
@@ -56,10 +67,30 @@ public partial class MainWindow : Window
     /// <summary>渲染器切换允许生效的时机：窗口显示之后。原生渲染视图（NativeView）未上树就创建会阻塞启动。</summary>
     private bool _rendererSwitchReady;
 
+    /// <summary>
+    /// 触摸层贴合视频区的兜底定时器。主路径是事件驱动（主窗口 PositionChanged / 视频区 Bounds 变化，
+    /// 见构造函数），它只负责收尾个别拿不到事件的场景；值没变化时 SyncOverlayBounds 会直接跳过。
+    /// </summary>
     private readonly DispatcherTimer _overlaySyncTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
 
     /// <summary>捏合 / 滚轮缩放结束后隐藏中央「缩放 x%」提示：最后一次缩放后 900ms 内没有新事件才隐藏。</summary>
     private readonly DispatcherTimer _zoomHintTimer = new() { Interval = TimeSpan.FromMilliseconds(900) };
+
+    /// <summary>悬浮控制栏的「无操作自动隐藏」倒计时（秒数为 0 时不启动，见 RestartControlBarCountdown）。</summary>
+    private readonly DispatcherTimer _controlBarHideTimer = new();
+
+    /// <summary>最近一次触摸 / 笔操作的时间（触屏优先保护期用；最小时间 = 还没发生过）。</summary>
+    private DateTime _lastTouchAt = DateTime.MinValue;
+
+    /// <summary>鼠标是否停在悬浮控制栏上（鼠标支持开启时暂停倒计时，见 RestartControlBarCountdown）。</summary>
+    private bool _mouseOverControlBar;
+
+    /// <summary>上一次被认作「鼠标移动」的位置（视频区坐标；位移不足阈值的事件不刷新它）。</summary>
+    private Point? _lastMouseMoveAt;
+
+    /// <summary>悬浮控制栏是否已注入触摸层（触摸层重建后标志复位、重新注入）。</summary>
+    private bool _overlayControlBarAttached;
+
     private VideoTouchOverlay? _touchOverlay;
     private SettingsWindow? _settingsWindow;
 
@@ -87,6 +118,19 @@ public partial class MainWindow : Window
 
         _overlaySyncTimer.Tick += (_, _) => SyncOverlayBounds();
 
+        // 触摸层 / 悬浮栏是独立顶层窗口，不会随主窗口自动移动，必须自己贴上去：
+        // 主窗口一移动就立即同步（WM_MOVE 事件驱动，与拖动在同一条消息里完成——这是「跟手」的关键，
+        // Popup 也是这么跟的）；视频区尺寸变化（窗口缩放、控制栏显隐）同样即时同步。
+        // 定时器只是兜底：个别拿不到位置事件的场景（DPI 切换等）靠它收尾。
+        PositionChanged += (_, _) => SyncOverlayBounds();
+        VideoView.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty)
+            {
+                SyncOverlayBounds();
+            }
+        };
+
         // 缩放提示的自动隐藏：正在滑动调节时不动它（那是滑动自己的提示，抬手时统一隐藏）
         _zoomHintTimer.Tick += (_, _) =>
         {
@@ -96,6 +140,21 @@ public partial class MainWindow : Window
                 _touchOverlay?.HideCenterHint();
             }
         };
+
+        // 悬浮控制栏：倒计时到点收起（能不能计时、要计多少秒统一在 RestartControlBarCountdown 里判断）
+        _controlBarHideTimer.Tick += (_, _) =>
+        {
+            _controlBarHideTimer.Stop();
+            if (_viewModel.IsOverlayControlBarActive && _viewModel.IsControlBarVisible)
+            {
+                _viewModel.IsControlBarVisible = false;
+                // 落一条打点：控制栏没按时收起时，先看有没有这条，能分清是倒计时没跑还是被活动刷新了
+                StartupTrace.Mark($"悬浮控制栏：无操作 {_settings.ControlBarBehavior.AutoHideSeconds:0.#} 秒，自动收起");
+            }
+        };
+
+        // 悬浮控制栏行为设置变化（窗口 / 全屏显示方式、自动隐藏秒数、鼠标支持）：即时生效
+        _settings.ControlBarBehavior.PropertyChanged += OnControlBarBehaviorChanged;
 
         // 控制栏已组件化：渲染器控件只改 ViewModel.Renderer，真正切换渲染视图（重建 mpv 上下文、
         // 同步触摸层）在这里统一处理。事件参数类型全名限定是因为 LibMpv 也有同名类型。
@@ -110,15 +169,34 @@ public partial class MainWindow : Window
                 // 亮度被调过（≠ 0）就在右下角显示「恢复亮度」，复位后隐藏
                 _touchOverlay?.SetBrightnessHintVisible(_viewModel.Brightness != 0d);
             }
+            else if (e.PropertyName == nameof(MainWindowViewModel.IsOverlayControlBarVisible))
+            {
+                // 悬浮控制栏在触摸层窗口里，显隐要单独同步过去（停靠栏由 XAML 绑定）
+                _touchOverlay?.SetControlBarVisible(_viewModel.IsOverlayControlBarVisible);
+            }
+            else if (e.PropertyName == nameof(MainWindowViewModel.IsOverlayControlBarActive))
+            {
+                // 显示形态切换（窗口 / 全屏的开关改了，或进出全屏）：先呼出控制栏，
+                // 避免落在“两种形态都看不到”的状态，再按新形态重挂悬浮栏并重开倒计时
+                _viewModel.IsControlBarVisible = true;
+                ApplyControlBarOverlay();
+            }
+            else if (e.PropertyName == nameof(MainWindowViewModel.IsControlBarVisible))
+            {
+                // 控制栏显隐变化：悬浮形态下重新开始 / 停止自动隐藏倒计时
+                RestartControlBarCountdown();
+            }
         };
 
         // 全屏状态接线：WindowState ↔ ViewModel.IsFullscreen（控制栏「全屏」控件的按钮文本跟随它，
-        // 用户按 F11 或系统快捷键切全屏时按钮同样跟着变）
+        // 用户按 F11 或系统快捷键切全屏时按钮同样跟着变）。
+        // 窗口状态还可能改变显示形态与窗口圆角：最大化 / 全屏是直角，切回普通窗口又变圆角。
         PropertyChanged += (_, e) =>
         {
             if (e.Property == WindowStateProperty)
             {
                 _viewModel.IsFullscreen = WindowState == WindowState.FullScreen;
+                ApplyControlBarOverlay();
             }
         };
 
@@ -126,6 +204,8 @@ public partial class MainWindow : Window
         {
             _rendererSwitchReady = true;
             EnsureTouchOverlay();
+            // 当前形态是悬浮的话（例如全屏默认悬浮），控制栏初始即「显示」，这里把自动隐藏倒计时一并接上
+            RestartControlBarCountdown();
 
             // --settings：启动后直接进设置页（调试验证 / 大屏快捷入口）。放到 Dispatcher 队列里，
             // 等主窗口显示完成再开设置窗口，避免两个窗口同时首帧。
@@ -152,6 +232,10 @@ public partial class MainWindow : Window
         }
 
         DestroyTouchOverlay();
+        // 悬浮控制栏也跟着触摸层一起撤掉（它就在触摸层窗口里），倒计时同步停掉
+        _controlBarHideTimer.Stop();
+        _mouseOverControlBar = false;
+
         var window = new SettingsWindow(_settings);
         _settingsWindow = window;
 
@@ -159,6 +243,8 @@ public partial class MainWindow : Window
         {
             _settingsWindow = null;
             EnsureTouchOverlay();
+            // 设置期间不跑倒计时：恢复触摸层后按最新设置重新开始
+            RestartControlBarCountdown();
         };
 
         window.Show(this);
@@ -209,6 +295,10 @@ public partial class MainWindow : Window
             _touchOverlay.VideoDragCompleted += OnVideoDragCompleted;
             _touchOverlay.VideoZoomRequested += OnVideoZoomRequested;
             _touchOverlay.BrightnessRestoreRequested += OnBrightnessRestoreRequested;
+            _touchOverlay.ActivityDetected += OnOverlayActivityDetected;
+            _touchOverlay.MouseMoved += OnOverlayMouseMoved;
+            _touchOverlay.ControlBarMouseEntered += OnControlBarMouseEntered;
+            _touchOverlay.ControlBarMouseExited += OnControlBarMouseExited;
             _touchOverlay.Show(this);
             // 触摸层可能刚建好（例如关闭设置窗口后重建），先把亮度提示的显隐同步过来
             _touchOverlay.SetBrightnessHintVisible(_viewModel.Brightness != 0d);
@@ -216,6 +306,14 @@ public partial class MainWindow : Window
             StartupTrace.Mark("视频区透明触摸层已启用（Native 渲染器）");
         }
 
+        // 悬浮控制栏也住在触摸层里：当前形态是悬浮就注入内容（触摸层重建后要重挂），再同步显隐与底部圆角
+        if (_viewModel.IsOverlayControlBarActive)
+        {
+            AttachOverlayControlBar();
+        }
+
+        _touchOverlay.SetControlBarVisible(_viewModel.IsOverlayControlBarVisible);
+        SyncControlBarCornerRadius();
         SyncOverlayBounds();
     }
 
@@ -234,12 +332,61 @@ public partial class MainWindow : Window
         _touchOverlay.VideoDragCompleted -= OnVideoDragCompleted;
         _touchOverlay.VideoZoomRequested -= OnVideoZoomRequested;
         _touchOverlay.BrightnessRestoreRequested -= OnBrightnessRestoreRequested;
+        _touchOverlay.ActivityDetected -= OnOverlayActivityDetected;
+        _touchOverlay.MouseMoved -= OnOverlayMouseMoved;
+        _touchOverlay.ControlBarMouseEntered -= OnControlBarMouseEntered;
+        _touchOverlay.ControlBarMouseExited -= OnControlBarMouseExited;
         _touchOverlay.Close();
         _touchOverlay = null;
+        _overlayControlBarAttached = false;
         StartupTrace.Mark("视频区透明触摸层已关闭");
     }
 
-    /// <summary>把触摸层贴合到视频区。独立窗口无法随父窗口自动移动，需按屏幕坐标同步。</summary>
+    /// <summary>把悬浮控制栏注入触摸层（只注入一次；触摸层重建后标志复位、由 EnsureTouchOverlay 再挂）。</summary>
+    private void AttachOverlayControlBar()
+    {
+        if (_touchOverlay is null || _overlayControlBarAttached)
+        {
+            return;
+        }
+
+        _overlayControlBarAttached = true;
+        _touchOverlay.SetControlBar(new PlayerControlBar { DataContext = _viewModel });
+    }
+
+    /// <summary>
+    /// 应用「当前窗口状态下的控制栏显示形态」：显示方式开关变化（窗口 / 全屏分开设置）与进出全屏都会走这里。
+    /// 悬浮 → 触摸层里注入并同步悬浮栏；停靠 → 同步隐藏悬浮栏（停靠栏的显隐由绑定跟着 ViewModel 走）。
+    /// 顺带对齐悬浮栏底部圆角、重开自动隐藏倒计时。
+    /// </summary>
+    private void ApplyControlBarOverlay()
+    {
+        // 触摸层正被设置窗口接管时先不动它（与 OpenSettings 的撤层策略一致），关窗后会补齐
+        if (_settingsWindow is null)
+        {
+            EnsureTouchOverlay();
+        }
+
+        SyncControlBarCornerRadius();
+        RestartControlBarCountdown();
+    }
+
+    /// <summary>
+    /// 悬浮控制栏底部圆角与主窗口的窗口圆角对齐：Win11 普通窗口是 8 px 圆角，悬浮栏贴窗口底边，
+    /// 圆角不一致时四角会“突出”到窗口圆角外面；Win10（查不到圆角属性）与最大化 / 全屏（直角）下为 0。
+    /// </summary>
+    private void SyncControlBarCornerRadius()
+    {
+        var radius = WindowState == WindowState.Normal
+            ? WindowCorners.GetRadiusDip(TryGetPlatformHandle()?.Handle ?? IntPtr.Zero)
+            : 0d;
+        _touchOverlay?.SetControlBarCornerRadius(radius);
+    }
+
+    /// <summary>
+    /// 把触摸层贴合到视频区（屏幕坐标）。主窗口移动时由 PositionChanged 事件即时调用，
+    /// 窗口拖动过程中与主窗口同步移动；值没变化一律跳过，不给窗口做无谓的原生命令。
+    /// </summary>
     private void SyncOverlayBounds()
     {
         var overlay = _touchOverlay;
@@ -248,9 +395,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        overlay.Position = VideoView.PointToScreen(new Point(0, 0));
-        overlay.Width = VideoView.Bounds.Width;
-        overlay.Height = VideoView.Bounds.Height;
+        // 值没变就不下发：没意义的窗口搬动/改尺寸只会让光标下方的窗口多做一次原生命令
+        // （还可能让系统补发鼠标移动事件，把「鼠标支持」的倒计时无端刷新）
+        var position = VideoView.PointToScreen(new Point(0, 0));
+        if (overlay.Position != position)
+        {
+            overlay.Position = position;
+        }
+
+        if (!overlay.Width.Equals(VideoView.Bounds.Width))
+        {
+            overlay.Width = VideoView.Bounds.Width;
+        }
+
+        if (!overlay.Height.Equals(VideoView.Bounds.Height))
+        {
+            overlay.Height = VideoView.Bounds.Height;
+        }
     }
 
     private void OnVideoTapped(object? sender, Point position) =>
@@ -367,6 +528,138 @@ public partial class MainWindow : Window
     {
         StartupTrace.Mark("画面右下角「恢复亮度」→ 亮度复位为 0");
         _viewModel.Brightness = 0d;
+    }
+
+    // ── 悬浮控制栏：自动隐藏倒计时与鼠标支持（触屏优先）────────────────────────
+    // 触摸层上报触摸 / 鼠标活动，这里统一决定倒计时的起停：
+    // · 触摸 / 笔：重新计时，并刷新保护期（系统会伴随触摸合成鼠标事件，保护期内的鼠标事件一律忽略）；
+    // · 鼠标：只在「鼠标支持」开启时参与——移动呼出控制栏、停在控制栏上不隐藏。
+
+    /// <summary>悬浮控制栏行为设置变化：窗口 / 全屏显示方式、自动隐藏秒数、鼠标支持都即时生效。</summary>
+    private void OnControlBarBehaviorChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        var behavior = _settings.ControlBarBehavior;
+        switch (e.PropertyName)
+        {
+            // 显示方式（窗口 / 全屏分别设置）只打点：形态应用由 ViewModel 的 IsOverlayControlBarActive
+            // 通知驱动（见构造函数里的接线），这里不重复做，免得同一件事做两遍
+            case nameof(ControlBarBehaviorSettings.OverlayInWindowed):
+            case nameof(ControlBarBehaviorSettings.OverlayInFullscreen):
+                StartupTrace.Mark($"控制栏显示方式 → 窗口：{(behavior.OverlayInWindowed ? "悬浮" : "底部")}"
+                    + $" · 全屏：{(behavior.OverlayInFullscreen ? "悬浮" : "底部")}"
+                    + (_viewModel.Renderer == VideoRenderer.Native ? string.Empty : "（注意：悬浮形态挂在视频区触摸层里，当前渲染器下不会出现）"));
+                break;
+            case nameof(ControlBarBehaviorSettings.AutoHideSeconds):
+                RestartControlBarCountdown();
+                break;
+            case nameof(ControlBarBehaviorSettings.MouseSupport):
+                // 悬停抑制只在鼠标支持开启时有效：开关一变先清掉，倒计时按新规则重来
+                _mouseOverControlBar = false;
+                RestartControlBarCountdown();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 悬浮控制栏的「无操作自动隐藏」倒计时统一入口（显隐变化、活动、设置变化都走这里）。
+    /// 任一条件不满足就保持停止：当前形态不是悬浮、控制栏已收起、秒数为 0、设置窗口开着、鼠标停在控制栏上。
+    /// </summary>
+    private void RestartControlBarCountdown()
+    {
+        _controlBarHideTimer.Stop();
+
+        var behavior = _settings.ControlBarBehavior;
+        if (!_viewModel.IsOverlayControlBarActive
+            || !_viewModel.IsControlBarVisible
+            || behavior.AutoHideSeconds <= 0d
+            || _settingsWindow is not null
+            || (behavior.MouseSupport && _mouseOverControlBar))
+        {
+            return;
+        }
+
+        _controlBarHideTimer.Interval = TimeSpan.FromSeconds(behavior.AutoHideSeconds);
+        _controlBarHideTimer.Start();
+    }
+
+    /// <summary>触摸层上的指针活动：重新计时；触摸 / 笔操作同时刷新「触屏优先」的保护期。</summary>
+    private void OnOverlayActivityDetected(object? sender, PointerType type)
+    {
+        var isTouch = type is PointerType.Touch or PointerType.Pen;
+        if (!isTouch && !_settings.ControlBarBehavior.MouseSupport)
+        {
+            // 鼠标支持关闭时，鼠标活动不参与控制栏行为（触屏优先）
+            return;
+        }
+
+        if (isTouch)
+        {
+            _lastTouchAt = DateTime.UtcNow;
+            // 触摸了就别再看鼠标悬停：鼠标停在控制栏上也不再阻止这次自动隐藏
+            _mouseOverControlBar = false;
+        }
+
+        RestartControlBarCountdown();
+    }
+
+    /// <summary>
+    /// 鼠标在视频区移动：鼠标支持开启时自动呼出控制栏并重新计时。
+    /// 两处关键处理：一，能收到视频区上的移动就说明指针不在控制栏上，顺手清掉悬停抑制
+    /// （避免残留状态让倒计时永远不跑）；二，位移不足 <see cref="MouseMoveThreshold"/> 的移动
+    /// 不算「移动了一下」——抖动不刷新倒计时，鼠标停在视频区上时控制栏才会按时收起。
+    /// </summary>
+    private void OnOverlayMouseMoved(object? sender, Point position)
+    {
+        _mouseOverControlBar = false;
+
+        var behavior = _settings.ControlBarBehavior;
+        if (!_viewModel.IsOverlayControlBarActive || !behavior.MouseSupport)
+        {
+            return;
+        }
+
+        // 触屏优先：触摸刚结束时系统伴随合成的鼠标事件不呼出控制栏
+        if (DateTime.UtcNow - _lastTouchAt < TouchMouseGuard)
+        {
+            return;
+        }
+
+        if (_lastMouseMoveAt is { } last && Distance(last, position) < MouseMoveThreshold)
+        {
+            return;
+        }
+
+        _lastMouseMoveAt = position;
+        _viewModel.IsControlBarVisible = true;
+        RestartControlBarCountdown();
+    }
+
+    /// <summary>两点间距离（鼠标移动阈值判定用）。</summary>
+    private static double Distance(Point a, Point b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return Math.Sqrt((dx * dx) + (dy * dy));
+    }
+
+    /// <summary>鼠标进入（或停在）悬浮控制栏：悬停期间不自动隐藏。</summary>
+    private void OnControlBarMouseEntered(object? sender, EventArgs e)
+    {
+        if (!_settings.ControlBarBehavior.MouseSupport
+            || DateTime.UtcNow - _lastTouchAt < TouchMouseGuard)
+        {
+            return;
+        }
+
+        _mouseOverControlBar = true;
+        RestartControlBarCountdown();
+    }
+
+    /// <summary>鼠标离开悬浮控制栏：按当前设置重新开始倒计时。</summary>
+    private void OnControlBarMouseExited(object? sender, EventArgs e)
+    {
+        _mouseOverControlBar = false;
+        RestartControlBarCountdown();
     }
 
     /// <summary>边滑边下发：与上一次下发的值相差不到一个步进就先攒着（拖动期间事件很密，全下发没必要）。</summary>

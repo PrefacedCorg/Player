@@ -1,0 +1,130 @@
+name: release
+
+# 手动发版（Actions → release → Run workflow）：
+#   解压入库的 7z 得到 libmpv-2.dll → 编译 / 测试 → 发布 →
+#   打 zip（硬性校验 libmpv-2.dll 在包里）→ 创建 GitHub Release。
+# 与 build.yml 共用同一套构建前提：mpv-dev 7z 包在仓库里，dll 由解压得到（不入库）。
+# 版本号会写进程序集（-p:Version），设置页「关于」里能看到；同时用作 tag（v<版本号>）与包名。
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 版本号（不带 v，例如 0.1.0；会创建 tag v0.1.0）
+        required: true
+        type: string
+      self_contained:
+        description: 自包含发布（目标机器不用装 .NET，体积更大）
+        type: boolean
+        default: true
+      prerelease:
+        description: 标记为预发布（Pre-release）
+        type: boolean
+        default: false
+
+# 创建 Release 需要写权限（不给的话 GITHUB_TOKEN 默认可能只有只读）
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 解析版本号
+        id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $version = $env:INPUT_VERSION.Trim().TrimStart('v', 'V')
+          if ($version -notmatch '^\d+(\.\d+){2}([-+].+)?$') {
+              throw "版本号格式不对：'$env:INPUT_VERSION'（正确示例：0.1.0、1.2.0-beta.1）"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "本次发版：$version（tag v$version）"
+
+      - name: 从 7z 包解压 libmpv-2.dll
+        shell: pwsh
+        run: ./scripts/extract-libmpv.ps1
+
+      - name: 安装 .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: 还原
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet restore Player.slnx -p:Version=$env:VERSION
+
+      - name: 编译
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet build Player.slnx -c Release --no-restore -p:Version=$env:VERSION
+
+      - name: 测试
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet test Player.slnx -c Release --no-build -p:Version=$env:VERSION
+
+      - name: 发布
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SELF_CONTAINED: ${{ inputs.self_contained }}
+        run: >
+          dotnet publish src/Player.App/Player.App.csproj -c Release -r win-x64
+          --self-contained $env:SELF_CONTAINED
+          -p:Version=$env:VERSION -p:DebugType=none
+          -o publish/win-x64
+
+      - name: 打包 zip（校验 libmpv-2.dll 在产物里）
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $publishDir = 'publish/win-x64'
+
+          # 硬性要求：没有 libmpv 就不能发版（csproj 里 dll 缺失只是静默跳过复制，不会有编译错误）
+          $dll = Join-Path $publishDir 'libmpv-2.dll'
+          if (-not (Test-Path $dll)) {
+              throw "发布产物里没有 libmpv-2.dll（$dll），停止发版。先确认 scripts/extract-libmpv.ps1 跑过。"
+          }
+          $dllInfo = Get-Item $dll
+          Write-Host "libmpv-2.dll：$([math]::Round($dllInfo.Length / 1MB, 1)) MB" `
+              "，sha256 $((Get-FileHash $dll -Algorithm SHA256).Hash)"
+
+          # 多套一层同名目录：解压出来是 Player-<版本>\…，不会散一桌
+          $stage = "publish/stage/Player-$env:VERSION"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path "$publishDir/*" -Destination $stage -Recurse -Force
+
+          $zip = "publish/Player-$env:VERSION-win-x64.zip"
+          Compress-Archive -Path $stage -DestinationPath $zip -Force
+          $zipInfo = Get-Item $zip
+          Write-Host "已打包：$zip（$([math]::Round($zipInfo.Length / 1MB, 1)) MB" `
+              "，sha256 $((Get-FileHash $zip -Algorithm SHA256).Hash)）"
+
+      - name: 创建 GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          $ghArgs = @(
+              'release', 'create', "v$env:VERSION",
+              "publish/Player-$env:VERSION-win-x64.zip",
+              '--title', "Player v$env:VERSION",
+              '--generate-notes',
+              '--target', '${{ github.sha }}'
+          )
+          if ($env:PRERELEASE -eq 'true') { $ghArgs += '--prerelease' }
+          gh @ghArgs

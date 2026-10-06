@@ -2,18 +2,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              xmlns:views="clr-namespace:Player.App.Views"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.VolumeControl"
              PointerWheelChanged="OnPointerWheelChanged">
 
   <Grid>
     <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
 
-      <!-- 竖直弹窗模式：点击弹出竖直滑块（默认隐藏，见 code-behind） -->
-      <Button x:Name="FlyoutButton"
-              Content="音量"
-              Click="OnFlyoutClick"
-              IsVisible="False"
-              Foreground="{DynamicResource PlayerControlForeground}" />
+      <!-- 竖直弹窗模式：点击弹出竖直滑块（默认隐藏，见 code-behind）。
+           弹窗模式下按「显示内容」设置切图标/文字（横排形态没有按钮，不受影响） -->
+      <controls:PlayerControlButton x:Name="FlyoutButton"
+                                    Text="音量"
+                                    Icon="{x:Static controls:PlayerControlIcons.Volume}"
+                                    Click="OnFlyoutClick"
+                                    IsVisible="False"
+                                    Foreground="{DynamicResource PlayerControlForeground}" />
 
       <!-- 横向模式：自绘滑块（整像素吸附防抖）摆在数字旁边（默认显示）。
            拖动期间不回写引擎/系统，松手才提交（防抖，同进度条 ScrubStarted/Completed 机制） -->

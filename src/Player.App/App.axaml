@@ -16,6 +16,9 @@
     <!-- WinUI/Fluent 主题（FluentAvaloniaUI）：设置页用它的 FANavigationView + FASettingsExpander。
          它自带完整控件样式集，因此不再叠加 Avalonia.Themes.Fluent。 -->
     <sty:FluentAvaloniaTheme />
+
+    <!-- 控制栏图标按钮样式（统一尺寸 + 点击区域） -->
+    <StyleInclude Source="avares://Player.App/Controls/PlayerControlButtonStyles.axaml" />
   </Application.Styles>
   <!-- 托盘 TrayIcon 不能在这里定义：XamlIlPopulate 填充阶段对它的 Icon/Menu 属性赋值会 NRE
        （ClassIsland 也是纯代码 new TrayIcon，菜单定义放 XAML Resources + 代码 FindResource 挂上，

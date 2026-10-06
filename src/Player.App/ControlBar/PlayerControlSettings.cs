@@ -37,6 +37,20 @@ public partial class PlayerControlSettings : ObservableObject
 
     #region 外观
 
+    /// <summary>
+    /// 内容显示形式：跟随全局设置（默认）/ 图标 / 文字。仅按钮类控件支持
+    /// （<see cref="PlayerControlCatalog.SupportsIconDisplay"/>），其余控件设了也没有可见效果。
+    /// </summary>
+    [ObservableProperty] private ControlDisplayMode _displayMode = ControlDisplayMode.FollowGlobal;
+
+    /// <summary>给高级设置页下拉框用的包装（Avalonia 无 SelectedValuePath，直接绑选项对象）。</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlDisplayModeOptions.Option DisplayModeOption
+    {
+        get => ControlDisplayModeOptions.All.First(o => o.Value == DisplayMode);
+        set => DisplayMode = value.Value;
+    }
+
     [ObservableProperty] private double _opacity = 1.0;
     [ObservableProperty] private bool _isCustomBackgroundColorEnabled;
     [ObservableProperty] private Color _backgroundColor = Colors.Black;
@@ -68,6 +82,7 @@ public partial class PlayerControlSettings : ObservableObject
     /// <summary>把一个设置对象的基础项复制到当前对象（创建副本用）。</summary>
     public virtual void CopyFrom(PlayerControlSettings source)
     {
+        DisplayMode = source.DisplayMode;
         IsResourceOverridingEnabled = source.IsResourceOverridingEnabled;
         SecondaryFontSize = source.SecondaryFontSize;
         BodyFontSize = source.BodyFontSize;

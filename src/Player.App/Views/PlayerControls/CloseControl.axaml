@@ -1,6 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.CloseControl">
 
-  <Button Content="关闭" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
+  <!-- 显示形式（图标/文字）由「全局设置 + 组件高级设置」合成，见 PlayerControlButton -->
+  <controls:PlayerControlButton Text="关闭" Icon="{x:Static controls:PlayerControlIcons.Close}" Click="OnClick"
+                                Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

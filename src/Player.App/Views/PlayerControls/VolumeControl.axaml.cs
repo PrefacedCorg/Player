@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using FluentAvalonia.UI.Controls;
+using Player.App.Controls;
 using Player.App.Platform;
 using Player.App.ViewModels;
 using Player.App.Views;
@@ -301,6 +302,14 @@ public partial class VolumeControl : UserControl
         if (Math.Abs(FlyoutNumberBox.Value - _value) >= 0.01d)
         {
             FlyoutNumberBox.Value = Math.Round(_value, MidpointRounding.AwayFromZero);
+        }
+
+        // 音量三态图标（竖直弹窗按钮）
+        if (FlyoutButton != null)
+        {
+            FlyoutButton.Icon = _value <= 0 ? PlayerControlIcons.Volume3
+                : _value < 67 ? PlayerControlIcons.Volume2
+                : PlayerControlIcons.Volume;
         }
 
         _syncing = false;

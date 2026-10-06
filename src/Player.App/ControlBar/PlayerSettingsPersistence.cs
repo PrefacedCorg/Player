@@ -402,6 +402,9 @@ public static class PlayerSettingsStore
                 settings.ControlBarBehavior.MouseSupport = behavior["mouseSupport"]?.GetValue<bool>() ?? true;
             }
 
+            // 控件显示内容（图标 / 文字）：缺失时保留默认文字（旧配置文件里没有这一段）
+            settings.ControlDisplayMode = ParseEnum(root["controlDisplayMode"], ControlDisplayMode.Text);
+
             if (root["controlBar"] is JsonArray lines)
             {
                 settings.ControlBar.Clear();
@@ -447,6 +450,8 @@ public static class PlayerSettingsStore
             writer.WriteNumber("autoHideSeconds", value.ControlBarBehavior.AutoHideSeconds);
             writer.WriteBoolean("mouseSupport", value.ControlBarBehavior.MouseSupport);
             writer.WriteEndObject();
+            writer.WritePropertyName("controlDisplayMode");
+            writer.WriteStringValue(value.ControlDisplayMode.ToString());
             writer.WritePropertyName("controlBar");
             writer.WriteStartArray();
             foreach (var line in value.ControlBar)

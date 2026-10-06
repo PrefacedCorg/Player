@@ -1,10 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.PlayPauseControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="{Binding PlayPauseText}"
-          Command="{Binding TogglePauseCommand}"
-          Foreground="{DynamicResource PlayerControlForeground}" />
+  <!-- 图标随播放状态切换（播放 ▶ / 暂停 ⏸），见 code-behind -->
+  <controls:PlayerControlButton x:Name="Button"
+                               Text="{Binding PlayPauseText}"
+                               Icon="{x:Static controls:PlayerControlIcons.Play}"
+                               Command="{Binding TogglePauseCommand}"
+                               Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

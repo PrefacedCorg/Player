@@ -26,6 +26,21 @@ public partial class PlayerSettings : ObservableObject
     public ObservableCollection<PlayerControlLine> ControlBar { get; } = PlayerControlCatalog.CreateDefaultLayout();
 
     /// <summary>
+    /// 控制栏控件显示图标还是文字（全局默认）。支持切换的控件（按钮类）在各自的高级设置里
+    /// 可覆盖为「跟随全局设置（默认）/ 图标 / 文字」。控件订阅它即时切换，无需重建控制栏。
+    /// </summary>
+    [ObservableProperty]
+    private ControlDisplayMode _controlDisplayMode = ControlDisplayMode.Text;
+
+    /// <summary>给设置页下拉框用的包装（Avalonia 无 SelectedValuePath，直接绑选项对象）。</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlDisplayModeOptions.Option ControlDisplayModeOption
+    {
+        get => ControlDisplayModeOptions.Global.First(o => o.Value == ControlDisplayMode);
+        set => ControlDisplayMode = value.Value;
+    }
+
+    /// <summary>
     /// 视频区触摸层上的手势设置（单击 / 双击 / 左滑 / 右滑分别对应什么操作）。
     /// 主窗口在触摸层事件里执行手势时直接读这份设置，设置页改完即生效。
     /// </summary>

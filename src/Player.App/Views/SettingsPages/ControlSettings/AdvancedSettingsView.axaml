@@ -34,6 +34,18 @@
       <Separator Margin="0 12 0 4" />
       <TextBlock Text="外观" FontWeight="SemiBold" Margin="0 0 0 4" />
 
+      <!-- 显示内容（图标/文字）：只对按钮类控件显示（进度条/时间显示/调试信息/容器没有可切换的内容，
+           见 code-behind 的可见性切换） -->
+      <ui:FASettingsExpander x:Name="DisplayModeExpander"
+                             Header="显示内容"
+                             Description="图标还是文字；跟随全局设置时取「控制栏」设置页里的全局选择。图标模式下文字显示在悬停提示里。"
+                             IsVisible="False">
+        <ui:FASettingsExpander.Footer>
+          <ComboBox ItemsSource="{x:Static app:ControlDisplayModeOptions.All}"
+                    SelectedItem="{Binding Settings.DisplayModeOption, Mode=TwoWay}" />
+        </ui:FASettingsExpander.Footer>
+      </ui:FASettingsExpander>
+
       <!-- 不透明度 -->
       <ui:FASettingsExpander Header="不透明度" Description="控件整体的不透明度。">
         <ui:FASettingsExpander.Footer>

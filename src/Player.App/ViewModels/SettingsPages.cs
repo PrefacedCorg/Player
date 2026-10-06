@@ -128,8 +128,9 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
     private readonly Stack<PlayerControlItem> _navigationStack = new();
 
     public ControlBarSettingsViewModel(PlayerSettings settings)
-        : base("控制栏", "拖拽调整控制栏布局；设置悬浮显示、自动隐藏与鼠标支持", FASymbol.Repair)
+        : base("控制栏", "拖拽调整控制栏布局；设置控件显示、悬浮、自动隐藏与鼠标支持", FASymbol.Repair)
     {
+        Settings = settings;
         Lines = settings.ControlBar;
         Behavior = settings.ControlBarBehavior;
         DropHandler = new ControlBarDropHandler(this);
@@ -137,6 +138,9 @@ public partial class ControlBarSettingsViewModel : SettingsPageViewModel
 
     /// <summary>拖放处理器：拖动源的落点都交给它（与 ClassIsland 一样挂在 ViewModel 上）。</summary>
     public ControlBarDropHandler DropHandler { get; }
+
+    /// <summary>与主窗口共用的应用设置：控制栏控件显示图标还是文字（全局默认，各控件可在高级设置里覆盖）。</summary>
+    public PlayerSettings Settings { get; }
 
     /// <summary>悬浮控制栏行为（悬浮在视频上 / 自动隐藏秒数 / 鼠标支持）：与主窗口共用同一份设置，改完即生效。</summary>
     public ControlBarBehaviorSettings Behavior { get; }

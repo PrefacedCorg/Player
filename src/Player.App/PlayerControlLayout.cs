@@ -78,6 +78,44 @@ public enum PlayerControlKind
 }
 
 /// <summary>
+/// 控制栏控件内容的显示形式：图标还是文字。
+/// 全局设置（<see cref="PlayerSettings.ControlDisplayMode"/>）只取 Icon / Text 两种；
+/// 组件高级设置（<see cref="PlayerControlSettings.DisplayMode"/>）多一个 FollowGlobal 表示跟随全局。
+/// </summary>
+public enum ControlDisplayMode
+{
+    /// <summary>跟随全局设置（仅组件高级设置里有意义，也是其默认值）。</summary>
+    FollowGlobal,
+
+    /// <summary>显示图标（<see cref="Controls.PlayerControlIcons"/> 里的 SVG 矢量路径）。</summary>
+    Icon,
+
+    /// <summary>显示文字（原有形态）。</summary>
+    Text,
+}
+
+/// <summary>给设置页下拉框用的「显示形式 → 中文名」选项表。</summary>
+public static class ControlDisplayModeOptions
+{
+    public sealed record Option(ControlDisplayMode Value, string Label);
+
+    /// <summary>组件高级设置用：跟随全局设置（默认）/ 图标 / 文字。</summary>
+    public static readonly IReadOnlyList<Option> All =
+    [
+        new(ControlDisplayMode.FollowGlobal, "跟随全局设置"),
+        new(ControlDisplayMode.Icon, "图标"),
+        new(ControlDisplayMode.Text, "文字"),
+    ];
+
+    /// <summary>全局设置用：只有图标 / 文字两种。</summary>
+    public static readonly IReadOnlyList<Option> Global =
+    [
+        new(ControlDisplayMode.Icon, "图标"),
+        new(ControlDisplayMode.Text, "文字"),
+    ];
+}
+
+/// <summary>
 /// 组件库条目：只表示"可以放进控制栏的控件种类"。放置之后由 <see cref="PlayerControlItem"/> 承载。
 /// </summary>
 public sealed record PlayerControlLibraryEntry(PlayerControlKind Kind, string Title, string Description)
@@ -240,6 +278,17 @@ public static class PlayerControlCatalog
     /// <summary>某种控件是否是容器型控件。</summary>
     public static bool IsContainer(PlayerControlKind kind) => kind is
         PlayerControlKind.Slide or PlayerControlKind.Rolling or PlayerControlKind.Group or PlayerControlKind.Stack;
+
+    /// <summary>
+    /// 某种控件是否支持「图标 / 文字」显示切换：带文字标签的按钮类控件才支持。
+    /// 进度条 / 时间显示 / 调试信息是纯信息展示，容器与对齐分割线本身没有可切换的内容。
+    /// </summary>
+    public static bool SupportsIconDisplay(PlayerControlKind kind) => kind is
+        PlayerControlKind.OpenFile or PlayerControlKind.PlayPause or PlayerControlKind.Stop
+        or PlayerControlKind.Volume or PlayerControlKind.Renderer or PlayerControlKind.Settings
+        or PlayerControlKind.Close or PlayerControlKind.Minimize or PlayerControlKind.Fullscreen
+        or PlayerControlKind.Previous or PlayerControlKind.Rewind or PlayerControlKind.FastForward
+        or PlayerControlKind.Next or PlayerControlKind.LoopMode;
 
     /// <summary>某种控件是否有自己的设置界面（「组件设置」标签页的显示开关：轮播/滚动有参数，
     /// 快进/回退可调跳转秒数，音量有显示方式与系统音量接管，进度条有左右时间显示与精度）。</summary>

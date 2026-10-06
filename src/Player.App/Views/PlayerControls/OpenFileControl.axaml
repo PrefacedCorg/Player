@@ -1,10 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.OpenFileControl"
              x:DataType="vm:MainWindowViewModel">
 
   <!-- DataContext 由视觉树继承（= 主窗口 ViewModel），无需手动赋值。
-       前景色取宿主上的资源，跟随控制栏设置里的"字体颜色" -->
-  <Button Content="打开文件" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
+       前景色取宿主上的资源，跟随控制栏设置里的"字体颜色"；
+       显示形式（图标/文字）由「全局设置 + 组件高级设置」合成，见 PlayerControlButton -->
+  <controls:PlayerControlButton Text="打开文件" Icon="{x:Static controls:PlayerControlIcons.OpenFile}" Click="OnClick"
+                                Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

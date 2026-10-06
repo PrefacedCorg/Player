@@ -1,0 +1,27 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Player.App.Controls">
+
+  <!-- 控制栏图标按钮样式：图标模式固定尺寸，文字模式自动适配内容宽度 -->
+  <Style Selector="controls|PlayerControlButton">
+    <Setter Property="MinWidth" Value="40" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <!-- 鼠标悬停时的视觉反馈 -->
+  <Style Selector="controls|PlayerControlButton:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}" />
+  </Style>
+
+  <!-- 按下时的视觉反馈 -->
+  <Style Selector="controls|PlayerControlButton:pressed">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}" />
+  </Style>
+
+</Styles>

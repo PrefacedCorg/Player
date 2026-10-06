@@ -167,9 +167,18 @@
             <TextBlock Text="{Binding Description}" FontSize="13" Foreground="#A8A8B0"/>
         </StackPanel>
 
-        <!-- ROW 1 悬浮控制栏：显示方式（窗口 / 全屏分开设置）、自动隐藏与鼠标支持（绑定共享设置上的
-             ControlBarBehavior，改完即生效） -->
+        <!-- ROW 1 控件显示与悬浮控制栏：控件显示（图标/文字，全局默认，绑定共享设置根上的
+             ControlDisplayMode，各控件可在高级设置里覆盖）；悬浮行为（窗口 / 全屏分开设置）、
+             自动隐藏与鼠标支持（绑定共享设置上的 ControlBarBehavior，改完即生效） -->
         <StackPanel Grid.Row="1" Spacing="6" Margin="0 0 0 16">
+            <ui:FASettingsExpander Header="控件显示内容"
+                                   Description="控制栏控件显示图标还是文字（仅按钮类控件；进度条、时间显示等纯信息控件不受影响）。个别控件可在它自己的「高级设置」里覆盖。图标模式下悬停显示文字提示。">
+                <ui:FASettingsExpander.Footer>
+                    <ComboBox ItemsSource="{x:Static app:ControlDisplayModeOptions.Global}"
+                              SelectedItem="{Binding Settings.ControlDisplayModeOption, Mode=TwoWay}" />
+                </ui:FASettingsExpander.Footer>
+            </ui:FASettingsExpander>
+
             <ui:FASettingsExpander Header="窗口模式下的控制栏"
                                    Description="底部 = 固定在窗口下沿（默认）；悬浮 = 半透明叠在视频上，点一下画面呼出 / 收起（悬浮栏挂在视频上方的触摸层窗口里，只在 Native 渲染器下出现）">
                 <ui:FASettingsExpander.Footer>

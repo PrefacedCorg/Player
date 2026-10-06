@@ -1,8 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.NextControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="下一个" Command="{Binding NextCommand}" Foreground="{DynamicResource PlayerControlForeground}" />
+  <controls:PlayerControlButton Text="下一个" Icon="{x:Static controls:PlayerControlIcons.Next}" Command="{Binding NextCommand}"
+                                Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

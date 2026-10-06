@@ -1,10 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:Player.App.ViewModels"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.LoopModeControl"
              x:DataType="vm:MainWindowViewModel">
 
-  <Button Content="{Binding LoopModeText}"
-          Command="{Binding CycleLoopModeCommand}"
-          Foreground="{DynamicResource PlayerControlForeground}" />
+  <!-- 图标模式下当前循环模式显示在 ToolTip 里 -->
+  <controls:PlayerControlButton x:Name="LoopButton" Text="{Binding LoopModeText}" Icon="{x:Static controls:PlayerControlIcons.LoopMode}"
+                                Command="{Binding CycleLoopModeCommand}"
+                                Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

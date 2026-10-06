@@ -1,7 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Player.App.Controls"
              x:Class="Player.App.Views.PlayerControls.FastForwardControl">
 
   <!-- 跳转秒数在「组件设置」里配置（快进/回退共用一个设置页），点击时按各自配置跳 -->
-  <Button Content="快进" Click="OnClick" Foreground="{DynamicResource PlayerControlForeground}" />
+  <controls:PlayerControlButton Text="快进" Icon="{x:Static controls:PlayerControlIcons.FastForward}" Click="OnClick"
+                                Foreground="{DynamicResource PlayerControlForeground}" />
 </UserControl>

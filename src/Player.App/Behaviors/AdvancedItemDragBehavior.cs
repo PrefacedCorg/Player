@@ -139,6 +139,7 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
             if (_draggedContainer is not null)
             {
                 SetDraggingPseudoClasses(_draggedContainer, true);
+                DragDodgeAnimation.AttachTransition(_draggedContainer);
             }
 
             AddTransforms(_itemsControl);
@@ -227,7 +228,8 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
             var container = itemsControl.ContainerFromIndex(i);
             if (container is not null)
             {
-                SetTranslateTransform(container, 0, 0);
+                DragDodgeAnimation.AttachTransition(container);
+                DragDodgeAnimation.ApplyDodge(container, 0, 0);
             }
   
             i++;
@@ -248,7 +250,7 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
             var container = itemsControl.ContainerFromIndex(i);
             if (container is not null)
             {
-                SetTranslateTransform(container, 0, 0);
+                DragDodgeAnimation.ClearDodge(container);
             }
   
             i++;
@@ -331,11 +333,11 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
 
             if (orientation == Orientation.Horizontal)
             {
-                SetTranslateTransform(_draggedContainer, delta, 0);
+                DragDodgeAnimation.ApplyDodge(_draggedContainer, delta, 0);
             }
             else
             {
-                SetTranslateTransform(_draggedContainer, 0, delta);
+                DragDodgeAnimation.ApplyDodge(_draggedContainer, 0, delta);
             }
 
             _draggedIndex = _itemsControl.IndexFromContainer(_draggedContainer);
@@ -378,11 +380,11 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
                 {
                     if (orientation == Orientation.Horizontal)
                     {
-                        SetTranslateTransform(targetContainer, -draggedBounds.Width, 0);
+                        DragDodgeAnimation.ApplyDodge(targetContainer, -draggedBounds.Width, 0);
                     }
                     else
                     {
-                        SetTranslateTransform(targetContainer, 0, -draggedBounds.Height);
+                        DragDodgeAnimation.ApplyDodge(targetContainer, 0, -draggedBounds.Height);
                     }
 
                     _targetIndex = _targetIndex == -1 ? targetIndex :
@@ -392,11 +394,11 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
                 {
                     if (orientation == Orientation.Horizontal)
                     {
-                        SetTranslateTransform(targetContainer, draggedBounds.Width, 0);
+                        DragDodgeAnimation.ApplyDodge(targetContainer, draggedBounds.Width, 0);
                     }
                     else
                     {
-                        SetTranslateTransform(targetContainer, 0, draggedBounds.Height);
+                        DragDodgeAnimation.ApplyDodge(targetContainer, 0, draggedBounds.Height);
                     }
 
                     _targetIndex = _targetIndex == -1 ? targetIndex :
@@ -404,14 +406,7 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
                 }
                 else
                 {
-                    if (orientation == Orientation.Horizontal)
-                    {
-                        SetTranslateTransform(targetContainer, 0, 0);
-                    }
-                    else
-                    {
-                        SetTranslateTransform(targetContainer, 0, 0);
-                    }
+                    DragDodgeAnimation.ApplyDodge(targetContainer, 0, 0);
                 }
 
                 i++;
@@ -429,12 +424,5 @@ public class AdvancedItemDragBehavior : StyledElementBehavior<Control>
         {
             ((IPseudoClasses)control.Classes).Remove(":dragging");
         }
-    }
-
-    private void SetTranslateTransform(Control control, double x, double y)
-    {
-        var transformBuilder = new TransformOperations.Builder(1);
-        transformBuilder.AppendTranslate(x, y);
-        control.RenderTransform = transformBuilder.Build();
     }
 }

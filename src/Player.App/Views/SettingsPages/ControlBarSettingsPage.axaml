@@ -16,7 +16,9 @@
             <Setter Property="(ia:Interaction.Behaviors)">
                 <ia:BehaviorCollectionTemplate>
                     <ia:BehaviorCollection>
-                        <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3"/>
+                        <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3"
+                                                                     x:CompileBindings="False"
+                                                                     Handler="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.DropHandler}"/>
                     </ia:BehaviorCollection>
                 </ia:BehaviorCollectionTemplate>
             </Setter>
@@ -137,7 +139,9 @@
                 <Setter Property="(ia:Interaction.Behaviors)">
                     <ia:BehaviorCollectionTemplate>
                         <ia:BehaviorCollection>
-                            <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3">
+                            <behaviors:AdvancedManagedContextDragBehavior HorizontalDragThreshold="3" VerticalDragThreshold="3"
+                                                                         x:CompileBindings="False"
+                                                                         Handler="{Binding $parent[pages:ControlBarSettingsPage].ViewModel.DropHandler}">
                                 <behaviors:AdvancedManagedContextDragBehavior.Context>
                                     <!-- 载荷 =(条目, 所在列表)。$parent[ListBox] 无法参与编译绑定，此处改用反射绑定 -->
                                     <MultiBinding Converter="{x:Static app:PlayerControlDragData.Create}" x:CompileBindings="False">

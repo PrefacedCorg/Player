@@ -13,6 +13,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Templates;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using Avalonia.Xaml.Interactions.DragAndDrop;
 using Avalonia.Xaml.Interactivity;
@@ -183,6 +184,18 @@ public class AdvancedManagedContextDragBehavior : StyledElementBehavior<Control>
         set => SetValue(CanDragWithoutDragThumbProperty, value);
     }
 
+    /// <summary>
+    /// 拖拽处理器：在拖拽开始/结束时收到通知（用于隐藏源控件、记录抓取点等）。
+    /// </summary>
+    public static readonly StyledProperty<IDragHandler?> HandlerProperty =
+        AvaloniaProperty.Register<AdvancedManagedContextDragBehavior, IDragHandler?>(nameof(Handler));
+
+    public IDragHandler? Handler
+    {
+        get => GetValue(HandlerProperty);
+        set => SetValue(HandlerProperty, value);
+    }
+
     /// <inheritdoc />
     protected override void OnAttachedToVisualTree()
     {
@@ -248,19 +261,63 @@ public class AdvancedManagedContextDragBehavior : StyledElementBehavior<Control>
         var tl = _topLevel ?? TopLevel.GetTopLevel(AssociatedObject);
         if (tl is null) return;
 
+        var ao = AssociatedObject;
+        var handler = Handler;
+
         var client = triggerEvent.GetPosition(tl);
         var previewOffset = UsePointerRelativePreviewOffset && _calculatedPreviewOffset.HasValue
             ? _calculatedPreviewOffset.Value
             : PreviewOffset;
 
-        var actualValue = AssociatedObject != null && PreviewTemplate == null
-            ? new Border()
+        // 预览内容：优先把源控件渲染成一张位图快照。这样随后隐藏源控件就不会让预览一起消失
+        // （VisualBrush 是实时的，源控件隐藏后它也会变透明）。
+        object actualValue;
+        var canHideSource = true;
+
+        if (PreviewTemplate is not null)
+        {
+            actualValue = value;
+        }
+        else if (ao is not null && ao.Bounds.Width >= 1 && ao.Bounds.Height >= 1)
+        {
+            var width = ao.Bounds.Width;
+            var height = ao.Bounds.Height;
+            var scaling = tl.RenderScaling > 0 ? tl.RenderScaling : 1;
+            var pixelSize = new PixelSize(
+                Math.Max(1, (int)Math.Ceiling(width * scaling)),
+                Math.Max(1, (int)Math.Ceiling(height * scaling)));
+            var snapshot = new RenderTargetBitmap(pixelSize, new Vector(96 * scaling, 96 * scaling));
+            snapshot.Render(ao);
+            actualValue = new Border
             {
-                Height = (int)AssociatedObject.Bounds.Height,
-                Width = (int)AssociatedObject.Bounds.Width,
-                Background = new VisualBrush(AssociatedObject)
-            }
-            : value;
+                Width = width,
+                Height = height,
+                Background = new ImageBrush(snapshot) { Stretch = Stretch.Fill }
+            };
+        }
+        else if (ao is not null)
+        {
+            actualValue = new Border
+            {
+                Height = ao.Bounds.Height,
+                Width = ao.Bounds.Width,
+                Background = new VisualBrush(ao)
+            };
+            canHideSource = false;
+        }
+        else
+        {
+            actualValue = value;
+        }
+
+        // 通知处理器：记录源控件、抓取点偏移等（用于落点计算）
+        handler?.BeforeDragDrop(ao, triggerEvent, value);
+
+        // 隐藏源控件本身，只保留跟随鼠标的半透明预览
+        if (canHideSource && ao is not null)
+        {
+            ao.Opacity = 0;
+        }
 
         DragPreviewService.Show(actualValue, PreviewTemplate, tl, client, previewOffset, PreviewOpacity);
 
@@ -284,6 +341,15 @@ public class AdvancedManagedContextDragBehavior : StyledElementBehavior<Control>
             DetachTopLevelHandlers();
             try { triggerEvent.Pointer?.Capture(null); } catch { }
             DragPreviewService.Hide();
+
+            // 恢复源控件显示
+            if (ao is not null)
+            {
+                ao.Opacity = 1;
+            }
+
+            handler?.AfterDragDrop(ao, triggerEvent, value);
+
             _internalDragging = false;
             _internalDragTcs = null;
             s_isDragging = false;
